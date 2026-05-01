@@ -2348,11 +2348,14 @@ function renderAvahi() {
   </div>`;
 }
 
-// Map "vlan10" → real bridge/iface name ("br-home", "eth0.10")
+// Map "vlan10" → Avahi interface name. Avahi should bind to bridge devices
+// for managed VLANs, so prefer br-<uci-section> over the raw eth0.<id>.
 function vlanRefToBridge(ref) {
   const vlanId = parseInt(ref.replace('vlan', ''));
   const v = state.vlans.find(vl => vl.id === vlanId);
-  return v ? (v._bridgeName || `eth0.${vlanId}`) : ref;
+  if (!v) return ref;
+  const name = v._netSection || sanitizeUciName(v.name);
+  return `br-${name}`;
 }
 
 // HTML preview for the Avahi tab
@@ -2713,6 +2716,14 @@ function portsToUciString(ports) {
     .join(' ');
 }
 
+function avahiNeedsBridge(secName) {
+  return state.avahiBridges.some(b => [b.if1, b.if2].some(ref => {
+    const id = parseInt(String(ref).replace('vlan', ''));
+    const v = state.vlans.find(vl => vl.id === id);
+    return v && (v._netSection || sanitizeUciName(v.name)) === secName;
+  }));
+}
+
 async function applyChanges() {
   if (state.pendingChanges.length === 0) { showToast('Nessuna modifica pendente', 'info'); return; }
   showToast('Applicazione in corso…', 'info');
@@ -2795,7 +2806,13 @@ async function applyChanges() {
 
       } else {
         // --- Update existing interface ---
-        await uciSetValues('network', secName, { ifname, proto: 'static', ipaddr: v.ip, netmask: v.mask });
+        const netValues = { ifname, proto: 'static', ipaddr: v.ip, netmask: v.mask };
+        if (v._isBridge || avahiNeedsBridge(secName)) netValues.type = 'bridge';
+        await uciSetValues('network', secName, netValues);
+        if (netValues.type === 'bridge') {
+          v._isBridge = true;
+          v._bridgeName = `br-${secName}`;
+        }
 
         // Update or create switch_vlan section
         if (state.switchType === 'swconfig') {
