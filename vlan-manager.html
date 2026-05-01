@@ -950,6 +950,81 @@
   </div>
 </div>
 
+<!-- Modal: Firewall rule avanzata -->
+<div class="modal-overlay" id="modal-fw-rule">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header">
+      <span class="modal-title" id="fw-rule-title">Regola firewall</span>
+      <button class="close-btn" onclick="closeModal('modal-fw-rule')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div class="field">
+          <label>Nome regola</label>
+          <input type="text" id="fw-rule-name" placeholder="es. allow_iot_mdns">
+        </div>
+        <div class="field">
+          <label>Target</label>
+          <select id="fw-rule-target">
+            <option>ACCEPT</option>
+            <option>REJECT</option>
+            <option>DROP</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>Zona sorgente</label>
+          <select id="fw-rule-src"></select>
+        </div>
+        <div class="field">
+          <label>Zona destinazione</label>
+          <select id="fw-rule-dest"></select>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="field">
+          <label>Protocollo</label>
+          <select id="fw-rule-proto">
+            <option value="">qualsiasi</option>
+            <option>tcp</option>
+            <option>udp</option>
+            <option>tcp udp</option>
+            <option>icmp</option>
+            <option>all</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Porta sorgente</label>
+          <input type="text" id="fw-rule-src-port" placeholder="opzionale">
+        </div>
+        <div class="field">
+          <label>Porta destinazione</label>
+          <input type="text" id="fw-rule-dest-port" placeholder="es. 5353">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>IP sorgente</label>
+          <input type="text" id="fw-rule-src-ip" placeholder="opzionale">
+        </div>
+        <div class="field">
+          <label>IP destinazione</label>
+          <input type="text" id="fw-rule-dest-ip" placeholder="opzionale">
+        </div>
+      </div>
+      <label class="toggle-wrap">
+        <div class="toggle on" id="fw-rule-enabled" onclick="toggleEl(this)"></div>
+        <span class="text-sm">Regola abilitata</span>
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-fw-rule')">Annulla</button>
+      <button class="btn btn-primary" style="width:auto" onclick="saveFwAdvancedRule()">Salva regola</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Avahi bridge -->
 <div class="modal-overlay" id="modal-avahi">
   <div class="modal">
@@ -1002,8 +1077,9 @@ const state = {
   vlans: [],
   ports: [],
   ssids: [],
-  pendingChanges: [],
+	  pendingChanges: [],
 	  fwRules: [],
+  fwAdvancedRules: [],
 	  pfRules: [],
 	  avahiBridges: [],
 	  apIsolation: {},
@@ -1011,8 +1087,9 @@ const state = {
 	  luciAuth: null,
   helperAvailable: false,
 	  editingVlanIdx: null,
-  _deletedVlans: [],
-  _deletedPfRules: [],
+	  _deletedVlans: [],
+	  _deletedPfRules: [],
+  _deletedFwAdvancedRules: [],
 };
 
 // ═══════════════════════════════════════════════════
@@ -1456,9 +1533,10 @@ function doLogout() {
 	  state.luciAuth = null;
   state.helperAvailable = false;
   state.vlans = [];
-  state.pendingChanges = [];
-  state._deletedVlans = [];
-  state._deletedPfRules = [];
+    state.pendingChanges = [];
+    state._deletedVlans = [];
+    state._deletedPfRules = [];
+    state._deletedFwAdvancedRules = [];
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   updatePendingBar();
@@ -1830,6 +1908,10 @@ function loadDemoData() {
     { name: 'NAS-SMB', proto: 'tcp', srcZone: 'Trusted', srcPort: 445, destIp: '192.168.10.50', destPort: 445 },
   ];
 
+  state.fwAdvancedRules = [
+    { name: 'Allow IoT mDNS', src: 'IoT', dest: '', proto: 'udp', srcIp: '', destIp: '', srcPort: '', destPort: '5353', target: 'ACCEPT', enabled: true, _isNew: true },
+  ];
+
   state.avahiBridges = [
     { if1: 'vlan10', if2: 'vlan20', dir: 'both', desc: 'Trusted ↔ IoT (AirPlay)' },
   ];
@@ -2046,6 +2128,24 @@ async function loadRealData() {
       _isNew: false,
     }));
 
+  state.fwAdvancedRules = Object.entries(fw)
+    .filter(([, s]) => s['.type'] === 'rule')
+    .map(([key, s]) => ({
+      name: s.name || key,
+      src: s.src || '',
+      dest: s.dest || '',
+      proto: Array.isArray(s.proto) ? s.proto.join(' ') : (s.proto || ''),
+      srcIp: s.src_ip || '',
+      destIp: s.dest_ip || '',
+      srcPort: s.src_port || '',
+      destPort: s.dest_port || '',
+      target: s.target || 'ACCEPT',
+      enabled: s.enabled !== '0',
+      _fwSection: key,
+      _isNew: false,
+    }));
+  state._deletedFwAdvancedRules = [];
+
   // Avahi: read allow-interfaces from daemon config
   state.avahiBridges = [];
   try {
@@ -2157,6 +2257,15 @@ function renderPortTags(ports) {
   return Object.entries(ports||{}).map(([p,m]) =>
     `<span class="port-tag ${m}">${p}${m==='tagged'?' (T)':m==='untagged'?' (U)':''}</span>`
   ).join('');
+}
+
+function fwZoneOptions(selected = '', includeAny = true) {
+  const zones = ['wan', ...state.vlans
+    .filter(v => !v._orphanSwitch)
+    .map(v => v._fwZoneName || v._netSection || v.name)];
+  const unique = [...new Set(zones.filter(Boolean))];
+  return (includeAny ? '<option value="">qualsiasi</option>' : '') +
+    unique.map(z => `<option value="${z}" ${z === selected ? 'selected' : ''}>${z}</option>`).join('');
 }
 
 // ═══════════════════════════════════════════════════
@@ -2290,12 +2399,12 @@ function renderFirewall() {
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">Port Forwarding</span>
-      <button class="btn btn-secondary btn-sm" onclick="openPF()">+ Aggiungi</button>
+	  <div class="card" style="margin-bottom:16px">
+	    <div class="card-header">
+	      <span class="card-title">Port Forwarding</span>
+	      <button class="btn btn-secondary btn-sm" onclick="openPF()">+ Aggiungi</button>
     </div>
-    ${state.pfRules.length === 0 ? '<div class="empty-state" style="padding:20px"><p>Nessuna regola di port forwarding</p></div>' : `
+	    ${state.pfRules.length === 0 ? '<div class="empty-state" style="padding:20px"><p>Nessuna regola di port forwarding</p></div>' : `
     <div class="table-wrap">
       <table>
         <thead><tr><th>Nome</th><th>Proto</th><th>Zona src</th><th>Porta ext</th><th>IP dst</th><th>Porta int</th><th></th></tr></thead>
@@ -2313,7 +2422,38 @@ function renderFirewall() {
         </tbody>
       </table>
     </div>`}
-  </div>`;
+	  </div>
+
+	  <div class="card">
+	    <div class="card-header">
+	      <span class="card-title">Regole firewall avanzate</span>
+	      <button class="btn btn-secondary btn-sm" onclick="openFwAdvancedRule()">+ Aggiungi</button>
+	    </div>
+	    ${state.fwAdvancedRules.length === 0 ? '<div class="empty-state" style="padding:20px"><p>Nessuna regola avanzata</p></div>' : `
+	    <div class="table-wrap">
+	      <table>
+	        <thead><tr><th>Nome</th><th>Stato</th><th>Src</th><th>Dst</th><th>Proto</th><th>IP / Porte</th><th>Target</th><th></th></tr></thead>
+	        <tbody>
+	          ${state.fwAdvancedRules.map((r,i) => `
+	          <tr>
+	            <td><strong>${r.name}</strong></td>
+	            <td>${r.enabled ? '<span class="badge badge-green">on</span>' : '<span class="badge badge-gray">off</span>'}</td>
+	            <td class="mono">${r.src || 'any'}</td>
+	            <td class="mono">${r.dest || 'any'}</td>
+	            <td class="mono">${r.proto || 'any'}</td>
+	            <td class="mono">${[r.srcIp && 'src '+r.srcIp, r.destIp && 'dst '+r.destIp, r.srcPort && 'sport '+r.srcPort, r.destPort && 'dport '+r.destPort].filter(Boolean).join('<br>') || '—'}</td>
+	            <td><span class="badge ${r.target === 'ACCEPT' ? 'badge-green' : 'badge-red'}">${r.target}</span></td>
+	            <td>
+	              <div class="row gap-4">
+	                <button class="btn btn-secondary btn-sm btn-icon" onclick="editFwAdvancedRule(${i})">✎</button>
+	                <button class="btn btn-danger btn-sm btn-icon" onclick="deleteFwAdvancedRule(${i})">✕</button>
+	              </div>
+	            </td>
+	          </tr>`).join('')}
+	        </tbody>
+	      </table>
+	    </div>`}
+	  </div>`;
 }
 
 // ═══════════════════════════════════════════════════
@@ -2590,6 +2730,68 @@ function toggleFwRule(src, dst) {
   showTab('firewall');
 }
 
+let editingFwAdvancedIdx = null;
+
+function openFwAdvancedRule(idx = null) {
+  editingFwAdvancedIdx = idx;
+  const r = idx === null ? {
+    name: '', src: '', dest: '', proto: '', srcIp: '', destIp: '', srcPort: '', destPort: '', target: 'ACCEPT', enabled: true,
+  } : state.fwAdvancedRules[idx];
+  document.getElementById('fw-rule-title').textContent = idx === null ? 'Nuova regola firewall' : `Modifica ${r.name}`;
+  document.getElementById('fw-rule-name').value = r.name || '';
+  document.getElementById('fw-rule-src').innerHTML = fwZoneOptions(r.src || '', true);
+  document.getElementById('fw-rule-dest').innerHTML = fwZoneOptions(r.dest || '', true);
+  document.getElementById('fw-rule-proto').value = r.proto || '';
+  document.getElementById('fw-rule-src-ip').value = r.srcIp || '';
+  document.getElementById('fw-rule-dest-ip').value = r.destIp || '';
+  document.getElementById('fw-rule-src-port').value = r.srcPort || '';
+  document.getElementById('fw-rule-dest-port').value = r.destPort || '';
+  document.getElementById('fw-rule-target').value = r.target || 'ACCEPT';
+  document.getElementById('fw-rule-enabled').className = 'toggle ' + (r.enabled !== false ? 'on' : '');
+  openModal('modal-fw-rule');
+}
+
+function editFwAdvancedRule(idx) {
+  openFwAdvancedRule(idx);
+}
+
+function saveFwAdvancedRule() {
+  const rule = {
+    name: document.getElementById('fw-rule-name').value.trim(),
+    src: document.getElementById('fw-rule-src').value,
+    dest: document.getElementById('fw-rule-dest').value,
+    proto: document.getElementById('fw-rule-proto').value,
+    srcIp: document.getElementById('fw-rule-src-ip').value.trim(),
+    destIp: document.getElementById('fw-rule-dest-ip').value.trim(),
+    srcPort: document.getElementById('fw-rule-src-port').value.trim(),
+    destPort: document.getElementById('fw-rule-dest-port').value.trim(),
+    target: document.getElementById('fw-rule-target').value,
+    enabled: document.getElementById('fw-rule-enabled').classList.contains('on'),
+  };
+  if (!rule.name) { showToast('Inserisci un nome regola', 'error'); return; }
+  if (!rule.src && !rule.dest) { showToast('Seleziona almeno una zona sorgente o destinazione', 'error'); return; }
+
+  if (editingFwAdvancedIdx === null) {
+    state.fwAdvancedRules.push({ ...rule, _isNew: true });
+    addChange({ op: 'add', label: `Firewall rule: ${rule.name}`, desc: `${rule.src || '*'} → ${rule.dest || '*'} ${rule.target}` });
+  } else {
+    const old = state.fwAdvancedRules[editingFwAdvancedIdx];
+    state.fwAdvancedRules[editingFwAdvancedIdx] = { ...old, ...rule, _isNew: old._isNew || false };
+    addChange({ op: 'mod', label: `Firewall rule: ${rule.name}`, desc: `${rule.src || '*'} → ${rule.dest || '*'} ${rule.target}` });
+  }
+  closeModal('modal-fw-rule');
+  showTab('firewall');
+}
+
+function deleteFwAdvancedRule(idx) {
+  const r = state.fwAdvancedRules[idx];
+  if (!confirm(`Eliminare la regola firewall "${r.name}"?`)) return;
+  if (!r._isNew && r._fwSection) state._deletedFwAdvancedRules.push(r);
+  state.fwAdvancedRules.splice(idx, 1);
+  addChange({ op: 'del', label: `Firewall rule: ${r.name}`, desc: '' });
+  showTab('firewall');
+}
+
 function openPF() {
   const pfSrc = document.getElementById('pf-src');
   if (pfSrc) pfSrc.innerHTML = '<option value="wan">wan</option>' +
@@ -2671,6 +2873,7 @@ function discardChanges() {
   state.pendingChanges = [];
   state._deletedVlans = [];
   state._deletedPfRules = [];
+  state._deletedFwAdvancedRules = [];
   updatePendingBar();
   loadRealData().then(() => {
     showTab('overview');
@@ -2916,6 +3119,34 @@ async function applyChanges() {
       r._isNew = false;
     }
 
+    for (const r of state._deletedFwAdvancedRules) {
+      if (r._fwSection) await uciDelete('firewall', r._fwSection).catch(() => {});
+    }
+
+    const optionalRuleOptions = ['src', 'dest', 'proto', 'src_ip', 'dest_ip', 'src_port', 'dest_port', 'enabled'];
+    for (const r of state.fwAdvancedRules) {
+      const section = r._fwSection || rpcVal(await uciAdd('firewall', 'rule'))?.section;
+      if (!section) continue;
+      const values = {
+        name: r.name,
+        target: r.target || 'ACCEPT',
+      };
+      if (r.src) values.src = r.src;
+      if (r.dest) values.dest = r.dest;
+      if (r.proto) values.proto = r.proto;
+      if (r.srcIp) values.src_ip = r.srcIp;
+      if (r.destIp) values.dest_ip = r.destIp;
+      if (r.srcPort) values.src_port = r.srcPort;
+      if (r.destPort) values.dest_port = r.destPort;
+      if (r.enabled === false) values.enabled = '0';
+      await uciSetValues('firewall', section, values);
+      for (const option of optionalRuleOptions) {
+        if (!(option in values)) await uciDelete('firewall', section, option).catch(() => {});
+      }
+      r._fwSection = section;
+      r._isNew = false;
+    }
+
     // ── STEP 4: Avahi config (if any bridge changes) ──────────────────
     const hasAvahiChange = state.pendingChanges.some(c => c.label?.toLowerCase().includes('avahi'));
     if (hasAvahiChange) await writeAvahiConf();
@@ -2938,6 +3169,7 @@ async function applyChanges() {
     state.pendingChanges = [];
     state._deletedVlans  = [];
     state._deletedPfRules = [];
+    state._deletedFwAdvancedRules = [];
     updatePendingBar();
     showToast('Modifiche applicate con successo!', 'success');
 
