@@ -740,13 +740,13 @@
 <!-- ══════════ LOGIN SCREEN ══════════ -->
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-logo">GL.iNet VLAN Manager</div>
+    <div class="login-logo">Custom VLAN Manager for GL.iNet routers</div>
     <h1>Accedi al Router</h1>
     <p>Usa le stesse credenziali dell'Admin Panel</p>
 
     <div class="field">
       <label>Indirizzo IP</label>
-      <input type="text" id="login-host" value="192.168.8.1" placeholder="192.168.8.1">
+      <input type="text" id="login-host" value="192.168.10.1" placeholder="192.168.10.1">
     </div>
     <div class="field">
       <label>Password</label>
@@ -974,6 +974,9 @@
 // ═══════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════
+const APP_BUILD = 'vlan-manager-2026-05-01-cgi-helper-v1';
+console.log('[app] build', APP_BUILD, 'origin=', window.location.origin, 'href=', window.location.href);
+
 const state = {
   host: '192.168.8.1',
   sid: null,
@@ -989,6 +992,8 @@ const state = {
   pfRules: [],
   avahiBridges: [],
   apIsolation: {},
+  rpcCallStyle: null,
+  luciAuth: null,
   editingVlanIdx: null,
   _deletedVlans: [],
   _deletedPfRules: [],
@@ -997,43 +1002,173 @@ const state = {
 // ═══════════════════════════════════════════════════
 //  RPC HELPERS
 // ═══════════════════════════════════════════════════
+function apiUrl(path) {
+  const url = new URL(path, window.location.origin).href;
+  console.log('[api]', path, '→', url);
+  return url;
+}
+
+function isLocalDevPage() {
+  return window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.protocol === 'file:';
+}
+
 async function rpc(method, params = {}) {
   const body = { jsonrpc: '2.0', method, params, id: Math.floor(Math.random()*9999) };
-  // Se servito via proxy locale (localhost) usa URL relativo, altrimenti diretto al router
-  const isProxy = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const rpcUrl  = isProxy ? '/rpc' : `http://${state.host}/rpc`;
+  const rpcUrl = apiUrl('/rpc');
   const r = await fetch(rpcUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'glinet': '1' },
     body: JSON.stringify(body)
   });
   const d = await r.json();
-  if (d.error) throw new Error(d.error.message || 'RPC error');
+  if (d.error) {
+    const err = new Error(d.error.message || 'RPC error');
+    err.code = d.error.code;
+    err.rpcError = d.error;
+    throw err;
+  }
   return d.result;
 }
 
-async function rpcCall(sid, service, method, params = {}) {
-  if (state.rpcMode === 'ubus') {
-    // /ubus: params come array [token, service, method, params]
-    const isProxy = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const ubusUrl = isProxy ? '/ubus' : `http://${state.host}/ubus`;
-    const body = { jsonrpc: '2.0', id: Math.floor(Math.random()*9999),
-                   method: 'call', params: [sid, service, method, params] };
-    const r = await fetch(ubusUrl, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const d = await r.json();
-    if (d.error) throw new Error(d.error.message || 'ubus error');
-    // ubus risponde [code, result] — code 0 = successo
-    if (Array.isArray(d.result)) {
-      if (d.result[0] !== 0) throw new Error(`ubus error code: ${d.result[0]}`);
-      return d.result[1] ?? {};
-    }
-    return d.result;
+async function ubusCall(sid, service, method, params = {}) {
+  const ubusUrl = apiUrl('/ubus');
+  const body = { jsonrpc: '2.0', id: Math.floor(Math.random()*9999),
+                 method: 'call', params: [sid, service, method, params] };
+  const r = await fetch(ubusUrl, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    redirect: 'manual',
+    body: JSON.stringify(body)
+  });
+  if (r.type === 'opaqueredirect' || (r.status >= 300 && r.status < 400)) {
+    const err = new Error(`ubus redirect ${r.status || ''}`.trim());
+    err.code = 302;
+    throw err;
   }
-  // /rpc GL.iNet: params come oggetto {sid, service, method, params}
-  return rpc('call', { sid, service, method, params });
+  const d = await r.json();
+  if (d.error) {
+    const err = new Error(d.error.message || 'ubus error');
+    err.code = d.error.code;
+    err.rpcError = d.error;
+    throw err;
+  }
+  if (Array.isArray(d.result)) {
+    if (d.result[0] !== 0) {
+      const err = new Error(`ubus error code: ${d.result[0]}`);
+      err.code = d.result[0];
+      err.ubusResult = d.result;
+      throw err;
+    }
+    return d.result[1] ?? {};
+  }
+  return d.result;
+}
+
+async function luciRpc(namespace, method, params = []) {
+  const token = namespace === 'auth' ? null : state.luciAuth;
+  const qs = token ? `?auth=${encodeURIComponent(token)}` : '';
+  const url = apiUrl(`/cgi-bin/luci/rpc/${namespace}${qs}`);
+  const body = { id: Math.floor(Math.random()*9999), method, params };
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    redirect: 'manual',
+    body: JSON.stringify(body),
+  });
+  if (r.type === 'opaqueredirect' || (r.status >= 300 && r.status < 400)) {
+    const err = new Error(`luci redirect ${r.status || ''}`.trim());
+    err.code = 302;
+    throw err;
+  }
+  const d = await r.json();
+  if (d.error) {
+    const err = new Error(d.error.message || 'LuCI RPC error');
+    err.code = d.error.code;
+    err.rpcError = d.error;
+    throw err;
+  }
+  return d.result;
+}
+
+async function luciLogin(username, password) {
+  const token = await luciRpc('auth', 'login', [username, password]);
+  if (!token || typeof token !== 'string') throw new Error('LuCI login senza token');
+  state.luciAuth = token;
+  state.rpcMode = 'luci';
+  console.log('[auth] Login OK via LuCI RPC, token =', token.substring(0,8) + '…');
+  return token;
+}
+
+async function luciCall(service, method, params = {}) {
+  if (service !== 'uci') throw new Error(`LuCI RPC non supporta service ${service}`);
+  if (method === 'get') {
+    if (params.option !== undefined) return luciRpc('uci', 'get', [params.config, params.section, params.option]);
+    if (params.section !== undefined) return luciRpc('uci', 'get_all', [params.config, params.section]);
+    return luciRpc('uci', 'get_all', [params.config]);
+  }
+  if (method === 'set') {
+    if (params.values && typeof params.values === 'object') {
+      const results = [];
+      for (const [option, value] of Object.entries(params.values)) {
+        results.push(await luciRpc('uci', 'set', [params.config, params.section, option, value]));
+      }
+      return results.at(-1) ?? {};
+    }
+    return luciRpc('uci', 'set', [params.config, params.section, params.option, params.value]);
+  }
+  if (method === 'add') {
+    const section = await luciRpc('uci', 'add',
+      params.name ? [params.config, params.type, params.name] : [params.config, params.type]);
+    return { section };
+  }
+  if (method === 'delete') {
+    if (params.option !== undefined) return luciRpc('uci', 'delete', [params.config, params.section, params.option]);
+    return luciRpc('uci', 'delete', [params.config, params.section]);
+  }
+  if (method === 'commit') return luciRpc('uci', 'commit', [params.config]);
+  throw new Error(`Metodo UCI LuCI non supportato: ${method}`);
+}
+
+async function rpcCall(sid, service, method, params = {}) {
+  if (state.rpcMode === 'luci') {
+    return luciCall(service, method, params);
+  }
+  if (state.rpcMode === 'ubus') {
+    return ubusCall(sid, service, method, params);
+  }
+  // /rpc GL.iNet: il formato "call" cambia tra firmware.
+  const callStyles = {
+    ubus: null,
+    object: { sid, service, method, params },
+    array: [sid, service, method, params],
+    cookieObject: { service, method, params },
+    cookieArray: [service, method, params],
+  };
+  const order = state.rpcCallStyle
+    ? [state.rpcCallStyle, ...Object.keys(callStyles).filter(k => k !== state.rpcCallStyle)]
+    : ['array', 'object', 'cookieArray', 'cookieObject', 'ubus'];
+  let lastErr = null;
+  for (const style of order) {
+    try {
+      const res = style === 'ubus'
+        ? await ubusCall(sid, service, method, params)
+        : await rpc('call', callStyles[style]);
+      if (state.rpcCallStyle !== style) {
+        state.rpcCallStyle = style;
+        console.log('[rpc] formato call:', style);
+      }
+      return res;
+    } catch(e) {
+      lastErr = e;
+      const canTryNext = e.code === -32602 || e.code === -32601 ||
+        e.message === 'Invalid params' || e.message === 'Method not found' ||
+        /^ubus error code:/.test(e.message);
+      if (!canTryNext) throw e;
+      console.warn('[rpc] formato call non accettato:', style, e.message);
+    }
+  }
+  throw lastErr || new Error('RPC call fallita');
 }
 
 // UCI shorthand via ubus
@@ -1080,11 +1215,86 @@ function uciList(value) {
   return String(value || '').split(/\s+/).filter(Boolean);
 }
 
+function parseUciScalar(value) {
+  const v = String(value || '').trim();
+  const m = v.match(/^(['"])(.*)\1$/);
+  return m ? m[2] : v;
+}
+
+function parseUciConfig(text) {
+  const out = {};
+  const anonCount = {};
+  let current = null;
+  String(text || '').split(/\r?\n/).forEach(line => {
+    const clean = line.replace(/#.*$/, '').trim();
+    if (!clean) return;
+    const cfg = clean.match(/^config\s+(\S+)(?:\s+(.+))?$/);
+    if (cfg) {
+      const type = parseUciScalar(cfg[1]);
+      const rawName = cfg[2] ? parseUciScalar(cfg[2]) : null;
+      const key = rawName || `@${type}[${anonCount[type] || 0}]`;
+      anonCount[type] = (anonCount[type] || 0) + (rawName ? 0 : 1);
+      current = { '.type': type, '.name': key };
+      out[key] = current;
+      return;
+    }
+    if (!current) return;
+    const opt = clean.match(/^option\s+(\S+)\s+(.+)$/);
+    if (opt) {
+      current[opt[1]] = parseUciScalar(opt[2]);
+      return;
+    }
+    const list = clean.match(/^list\s+(\S+)\s+(.+)$/);
+    if (list) {
+      const key = list[1];
+      if (!Array.isArray(current[key])) current[key] = current[key] ? [current[key]] : [];
+      current[key].push(parseUciScalar(list[2]));
+    }
+  });
+  return out;
+}
+
+async function readRouterFile(path) {
+  const helperUrl = apiUrl(`/cgi-bin/vlan-api?action=read&path=${encodeURIComponent(path)}`);
+  try {
+    const helperRes = await fetch(helperUrl, { method: 'GET', redirect: 'manual' });
+    if (helperRes.ok) {
+      const text = await helperRes.text();
+      console.log('[helper] read OK', path, text.length, 'bytes');
+      return text;
+    }
+    console.warn('[helper] read fallita', path, helperRes.status);
+  } catch(helperErr) {
+    console.warn('[helper] non disponibile:', helperErr.message);
+  }
+
+  const res = rpcVal(await rpcCall(state.sid, 'file', 'read', { path }));
+  if (!res) throw new Error(`file read vuoto: ${path}`);
+  const data = res.data ?? res.content ?? res.value;
+  if (typeof data !== 'string') throw new Error(`file read senza data: ${path}`);
+  try {
+    return decodeURIComponent(escape(atob(data)));
+  } catch(e) {
+    return data;
+  }
+}
+
+async function loadUciConfig(config, raw) {
+  const fromRpc = uciValues(raw);
+  if (Object.keys(fromRpc).length > 0) return fromRpc;
+  const path = `/etc/config/${config}`;
+  const text = await readRouterFile(path);
+  const parsed = parseUciConfig(text);
+  console.log(`[uci] ${config}: fallback file read`, Object.keys(parsed).length, 'sezioni');
+  return parsed;
+}
+
 // ═══════════════════════════════════════════════════
 //  AUTH
 // ═══════════════════════════════════════════════════
 async function doLogin() {
-  const host = document.getElementById('login-host').value.trim();
+  const hostInput = document.getElementById('login-host').value.trim();
+  const host = isLocalDevPage() ? hostInput : window.location.host;
   const pass = document.getElementById('login-pass').value;
   const btn = document.getElementById('login-btn');
   const errEl = document.getElementById('login-error');
@@ -1092,11 +1302,11 @@ async function doLogin() {
   btn.disabled = true;
   document.getElementById('login-btn-text').innerHTML = '<span class="spinner"></span> Connessione…';
   state.host = host;
+  console.log('[auth] API host effettivo:', state.host, 'origin:', window.location.origin);
 
   try {
     // ── Tentativo 1: /ubus (OpenWrt standard, password in chiaro, no crypt) ──
-    const isProxy = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const ubusUrl = isProxy ? '/ubus' : `http://${host}/ubus`;
+    const ubusUrl = apiUrl('/ubus');
     try {
       console.log('[auth] Tentativo /ubus...');
       const r = await fetch(ubusUrl, {
@@ -1140,15 +1350,21 @@ async function doLogin() {
     console.log('[auth] VERIFICA cipher con: openssl passwd -' + (alg===5?'5':'1') +
                 ' -salt "' + salt + '" "TUA_PASSWORD"');
 
-    const login = await rpc('login', { username: 'root', hash });
-    console.log('[auth] login →', login);
-    const NULL_SID = '00000000000000000000000000000000';
-    if (!login || !login.sid || login.sid === NULL_SID) throw new Error('Credenziali errate (password sbagliata o algoritmo hash non supportato)');
-    state.sid = login.sid;
-    state.rpcMode = 'glinet';
-    console.log('[auth] Login OK via /rpc GL.iNet');
+	    const login = await rpc('login', { username: 'root', hash });
+	    console.log('[auth] login →', login);
+	    const NULL_SID = '00000000000000000000000000000000';
+	    if (!login || !login.sid || login.sid === NULL_SID) throw new Error('Credenziali errate (password sbagliata o algoritmo hash non supportato)');
+	    state.sid = login.sid;
+	    state.rpcMode = 'glinet';
+	    console.log('[auth] Login OK via /rpc GL.iNet');
+    try {
+      await luciLogin('root', pass);
+    } catch(luciErr) {
+      state.rpcMode = 'glinet';
+      console.warn('[auth] LuCI RPC non disponibile:', luciErr.message);
+    }
 
-    await initApp();
+	    await initApp();
   } catch(e) {
     console.error('[auth] Errore login:', e);
     errEl.textContent = e.message || 'Errore di connessione. Verifica IP e password.';
@@ -1161,6 +1377,8 @@ async function doLogin() {
 function doLogout() {
   state.sid = null;
   state.rpcMode = 'glinet';
+  state.rpcCallStyle = null;
+  state.luciAuth = null;
   state.vlans = [];
   state.pendingChanges = [];
   state._deletedVlans = [];
@@ -1468,7 +1686,7 @@ async function initApp() {
   // Detect device info
   try {
     const info = await rpcCall(state.sid, 'system', 'board', {});
-    state.deviceModel = info?.model || 'GL.iNet Router';
+    state.deviceModel = info?.model || 'custom vlan manger for GL.iNet Router';
     state.fwVersion = info?.release?.version || '';
     document.getElementById('device-label').textContent = state.deviceModel;
     document.getElementById('fw-version').textContent = `fw ${state.fwVersion}`;
@@ -1477,7 +1695,7 @@ async function initApp() {
     const model = (info?.model || '').toLowerCase();
     state.switchType = (model.includes('sft1200') || model.includes('mt300') || model.includes('ar750')) ? 'swconfig' : 'dsa';
   } catch(e) {
-    state.deviceModel = 'GL.iNet Router';
+    state.deviceModel = 'custom vlan manager for GL.iNet Router';
     state.switchType = 'dsa';
     document.getElementById('device-label').textContent = state.deviceModel;
   }
@@ -1551,10 +1769,18 @@ async function loadRealData() {
     rpcCall(state.sid, 'uci', 'get', { config: 'dhcp'     }).catch(() => ({})),
     rpcCall(state.sid, 'uci', 'get', { config: 'firewall' }).catch(() => ({})),
   ]);
-  const net  = uciValues(netRaw);
-  const wifi = uciValues(wifiRaw);
-  const dhcp = uciValues(dhcpRaw);
-  const fw   = uciValues(fwRaw);
+  const [net, wifi, dhcp, fw] = await Promise.all([
+    loadUciConfig('network',  netRaw).catch(e => { console.warn('[uci] network non leggibile:', e); return {}; }),
+    loadUciConfig('wireless', wifiRaw).catch(e => { console.warn('[uci] wireless non leggibile:', e); return {}; }),
+    loadUciConfig('dhcp',     dhcpRaw).catch(e => { console.warn('[uci] dhcp non leggibile:', e); return {}; }),
+    loadUciConfig('firewall', fwRaw).catch(e => { console.warn('[uci] firewall non leggibile:', e); return {}; }),
+  ]);
+  console.log('[uci] sezioni lette', {
+    network: Object.keys(net).length,
+    wireless: Object.keys(wifi).length,
+    dhcp: Object.keys(dhcp).length,
+    firewall: Object.keys(fw).length,
+  });
 
   if (Object.values(net).some(sec => sec?.['.type'] === 'switch_vlan')) {
     state.switchType = 'swconfig';
@@ -1699,7 +1925,11 @@ async function loadRealData() {
     });
   }
   state.vlans.sort((a, b) => a.id - b.id);
-	  state._deletedVlans = [];
+  console.log('[vlan] rilevate', state.vlans.map(v => ({
+    id: v.id, name: v.name, ip: v.ip, ifname: state.switchType === 'swconfig' ? `eth0.${v.id}` : `br-vlan${v.id}`,
+    ports: v.ports, orphan: !!v._orphanSwitch,
+  })));
+  state._deletedVlans = [];
   state._deletedPfRules = [];
 
   // AP isolation: check wireless isolate flag per network
@@ -1743,26 +1973,26 @@ async function loadRealData() {
   // Avahi: read allow-interfaces from daemon config
   state.avahiBridges = [];
   try {
-    const avahi = rpcVal(await rpcCall(state.sid, 'file', 'read',
-      { path: '/etc/avahi/avahi-daemon.conf' }));
-    if (avahi?.data) {
-      const conf = atob(avahi.data);
-      const m = conf.match(/allow-interfaces=([^\n]+)/);
-      if (m) {
-        const ifaces = m[1].trim().split(',');
-        const bridgeToVlan = {};
-        state.vlans.forEach(v => {
-          bridgeToVlan[v._bridgeName] = `vlan${v.id}`;
-          bridgeToVlan[`eth0.${v.id}`] = `vlan${v.id}`;
-        });
-        for (let i = 0; i < ifaces.length - 1; i++) {
-          const if1 = bridgeToVlan[ifaces[i].trim()] || ifaces[i].trim();
-          const if2 = bridgeToVlan[ifaces[i+1].trim()] || ifaces[i+1].trim();
-          state.avahiBridges.push({ if1, if2, dir: 'both', desc: `${ifaces[i].trim()} ↔ ${ifaces[i+1].trim()}` });
-        }
+    const conf = await readRouterFile('/etc/avahi/avahi-daemon.conf');
+    const m = conf.match(/^\s*allow-interfaces\s*=\s*([^\n#]+)/m);
+    if (m) {
+      const ifaces = m[1].trim().split(',').map(s => s.trim()).filter(Boolean);
+      const bridgeToVlan = {};
+      state.vlans.forEach(v => {
+        bridgeToVlan[v._bridgeName] = `vlan${v.id}`;
+        bridgeToVlan[`br-${v.name}`] = `vlan${v.id}`;
+        bridgeToVlan[`eth0.${v.id}`] = `vlan${v.id}`;
+      });
+      for (let i = 0; i < ifaces.length - 1; i++) {
+        const if1 = bridgeToVlan[ifaces[i]] || ifaces[i];
+        const if2 = bridgeToVlan[ifaces[i+1]] || ifaces[i+1];
+        state.avahiBridges.push({ if1, if2, dir: 'both', desc: `${ifaces[i]} ↔ ${ifaces[i+1]}` });
       }
+      console.log('[avahi] bridges rilevati', state.avahiBridges);
     }
-  } catch(e) { /* avahi not configured or file read not allowed */ }
+  } catch(e) {
+    console.warn('[avahi] configurazione non leggibile:', e.message);
+  }
 }
 
 // ═══════════════════════════════════════════════════

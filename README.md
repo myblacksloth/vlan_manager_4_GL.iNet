@@ -1,3 +1,5 @@
+![](/stuff/i/SCR-20260501-rvhn.png)
+
 - [Where it all began](#where-it-all-began)
 - [Installazione](#installazione)
 
@@ -8,9 +10,21 @@ where it all began: [https://github.com/myblacksloth/GL.iNet--flint2--VLANs](htt
 # Installazione
 
 ```bash
+ssh -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa root@192.168.10.1
+
+scp -O -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa vlan-api.cgi root@192.168.10.1:/www/cgi-bin/vlan-api
+
+chmod +x vlan-api
+./vlan-api
+
+
 # scp vlan-manager.html root@192.168.8.1:/www/myvlan/vlan.html
 scp -O -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa vlan-manager.html root@192.168.10.1:/www/myvlan/vlan.html
 # accedi su http://192.168.10.1/myvlan/vlan.html
+
+
+
+
 ```
 
 
