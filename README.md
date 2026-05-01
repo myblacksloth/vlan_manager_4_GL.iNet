@@ -5,11 +5,16 @@
 - [Where it all began](#where-it-all-began)
 - [Installazione](#installazione)
 - [Disclaimer](#disclaimer)
+- [Stato del progetto](#stato-del-progetto)
 
 # Disclaimer
 
 Questo progetto non e' affiliato, approvato o sponsorizzato da GL.iNet, OpenWrt o dai rispettivi titolari.
 GL.iNet e OpenWrt sono marchi registrati o marchi dei rispettivi proprietari. I contenuti, gli script e l'interfaccia forniti in questo repository non sono ufficiali.
+
+# Stato del progetto
+
+Questa applicazione e' ancora in sviluppo. Non tutte le funzioni sono state testate su tutti i firmware, modelli o configurazioni supportate; alcune operazioni potrebbero non funzionare correttamente o produrre risultati inattesi. Prima di applicare modifiche al router, effettuare un backup della configurazione.
 
 # Where it all began
 
@@ -33,6 +38,5 @@ scp -O -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa vlan-man
 
 
 ```
-
 
 
