@@ -988,13 +988,14 @@ const state = {
   ports: [],
   ssids: [],
   pendingChanges: [],
-  fwRules: [],
-  pfRules: [],
-  avahiBridges: [],
-  apIsolation: {},
-  rpcCallStyle: null,
-  luciAuth: null,
-  editingVlanIdx: null,
+	  fwRules: [],
+	  pfRules: [],
+	  avahiBridges: [],
+	  apIsolation: {},
+	  rpcCallStyle: null,
+	  luciAuth: null,
+  helperAvailable: false,
+	  editingVlanIdx: null,
   _deletedVlans: [],
   _deletedPfRules: [],
 };
@@ -1173,23 +1174,32 @@ async function rpcCall(sid, service, method, params = {}) {
 
 // UCI shorthand via ubus
 async function uciGet(config, section, option) {
+  if (state.helperAvailable) return helperUciGet(config, section, option);
   return rpcCall(state.sid, 'uci', 'get', { config, section, option });
 }
 async function uciSet(config, section, option, value) {
+  if (state.helperAvailable) return helperUciSet(config, section, option, value);
   return rpcCall(state.sid, 'uci', 'set', { config, section, option, value });
 }
 async function uciCommit(config) {
+  if (state.helperAvailable) return helperUciCommit(config);
   return rpcCall(state.sid, 'uci', 'commit', { config });
 }
 async function uciSetValues(config, section, values) {
+  if (state.helperAvailable) {
+    for (const [option, value] of Object.entries(values)) await helperUciSet(config, section, option, value);
+    return {};
+  }
   return rpcCall(state.sid, 'uci', 'set', { config, section, values });
 }
 async function uciAdd(config, type, name) {
+  if (state.helperAvailable) return helperUciAdd(config, type, name);
   const p = { config, type };
   if (name) p.name = name;
   return rpcCall(state.sid, 'uci', 'add', p);
 }
 async function uciDelete(config, section, option) {
+  if (state.helperAvailable) return helperUciDelete(config, section, option);
   const p = { config, section };
   if (option !== undefined) p.option = option;
   return rpcCall(state.sid, 'uci', 'delete', p);
@@ -1260,6 +1270,7 @@ async function readRouterFile(path) {
     const helperRes = await fetch(helperUrl, { method: 'GET', redirect: 'manual' });
     if (helperRes.ok) {
       const text = await helperRes.text();
+      state.helperAvailable = true;
       console.log('[helper] read OK', path, text.length, 'bytes');
       return text;
     }
@@ -1277,6 +1288,55 @@ async function readRouterFile(path) {
   } catch(e) {
     return data;
   }
+}
+
+async function helperPost(action, fields = {}) {
+  const body = new URLSearchParams({ action, ...fields });
+  const res = await fetch(apiUrl('/cgi-bin/vlan-api'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    redirect: 'manual',
+    body,
+  });
+  if (!res.ok) throw new Error(`helper ${action} HTTP ${res.status}`);
+  state.helperAvailable = true;
+  return res.text();
+}
+
+async function helperUciGet(config, section, option) {
+  const all = parseUciConfig(await readRouterFile(`/etc/config/${config}`));
+  if (section === undefined) return all;
+  const sec = all[section] || {};
+  if (option === undefined) return sec;
+  return sec[option];
+}
+
+async function helperUciSet(config, section, option, value) {
+  await helperPost('uci-set', { config, section, option, value: String(value ?? '') });
+  return {};
+}
+
+async function helperUciAdd(config, type, name) {
+  const text = await helperPost('uci-add', { config, type, ...(name ? { name } : {}) });
+  return { section: text.trim() };
+}
+
+async function helperUciDelete(config, section, option) {
+  await helperPost('uci-delete', { config, section, ...(option !== undefined ? { option } : {}) });
+  return {};
+}
+
+async function helperUciCommit(config) {
+  await helperPost('uci-commit', { config });
+  return {};
+}
+
+async function helperFileWrite(path, content) {
+  await helperPost('file-write', { path, value: content });
+}
+
+async function helperService(service) {
+  await helperPost('service', { service });
 }
 
 async function loadUciConfig(config, raw) {
@@ -1376,9 +1436,10 @@ async function doLogin() {
 
 function doLogout() {
   state.sid = null;
-  state.rpcMode = 'glinet';
-  state.rpcCallStyle = null;
-  state.luciAuth = null;
+	  state.rpcMode = 'glinet';
+	  state.rpcCallStyle = null;
+	  state.luciAuth = null;
+  state.helperAvailable = false;
   state.vlans = [];
   state.pendingChanges = [];
   state._deletedVlans = [];
@@ -2343,6 +2404,11 @@ rlimit-nproc=3
 
 async function writeAvahiConf() {
   const content = generateAvahiConfText();
+  if (state.helperAvailable) {
+    await helperFileWrite('/etc/avahi/avahi-daemon.conf', content);
+    await helperService('avahi-restart').catch(() => {});
+    return;
+  }
   // file ubus service expects base64-encoded data
   const encoded = btoa(unescape(encodeURIComponent(content)));
   await rpcCall(state.sid, 'file', 'write', {
@@ -2771,7 +2837,7 @@ async function applyChanges() {
     }
 
     // ── STEP 3: inter-VLAN forwarding rules ───────────────────────────
-    const fwNow = uciValues(await rpcCall(state.sid, 'uci', 'get', { config: 'firewall' }).catch(() => ({})));
+    const fwNow = uciValues(await uciGet('firewall').catch(() => ({})));
     const fwdNow = Object.entries(fwNow).filter(([, s]) => s['.type'] === 'forwarding');
 
     // Map zone name → vlan name for our custom VLANs
@@ -2822,14 +2888,20 @@ async function applyChanges() {
     const hasAvahiChange = state.pendingChanges.some(c => c.label?.toLowerCase().includes('avahi'));
     if (hasAvahiChange) await writeAvahiConf();
 
-    // ── STEP 5: Commit & reload ───────────────────────────────────────
-    await uciCommit('network');
-    await uciCommit('dhcp');
-    await uciCommit('firewall');
-    await uciCommit('wireless').catch(() => {});
-    await rpcCall(state.sid, 'network', 'reload', {}).catch(() => {});
-    await rpcCall(state.sid, 'wifi', 'reload', {}).catch(() => {});
-    await rpcCall(state.sid, 'service', 'restart', { name: 'firewall' }).catch(() => {});
+	    // ── STEP 5: Commit & reload ───────────────────────────────────────
+	    await uciCommit('network');
+	    await uciCommit('dhcp');
+	    await uciCommit('firewall');
+	    await uciCommit('wireless').catch(() => {});
+    if (state.helperAvailable) {
+      await helperService('network-reload').catch(() => {});
+      await helperService('wifi-reload').catch(() => {});
+      await helperService('firewall-restart').catch(() => {});
+    } else {
+      await rpcCall(state.sid, 'network', 'reload', {}).catch(() => {});
+      await rpcCall(state.sid, 'wifi', 'reload', {}).catch(() => {});
+      await rpcCall(state.sid, 'service', 'restart', { name: 'firewall' }).catch(() => {});
+    }
 
     state.pendingChanges = [];
     state._deletedVlans  = [];
