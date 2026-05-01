@@ -2,10 +2,12 @@
 
 ![](./stuff/i/SCR-20260501-rwjn.png)
 
-- [Where it all began](#where-it-all-began)
-- [Installazione](#installazione)
+![](./stuff/i/SCR-20260501-semt.png)
+
 - [Disclaimer](#disclaimer)
 - [Stato del progetto](#stato-del-progetto)
+- [Where it all began](#where-it-all-began)
+- [Installazione](#installazione)
 
 # Disclaimer
 
