@@ -733,6 +733,14 @@
   .op-add { background: #dcfce7; color: #15803d; }
   .op-del { background: #fee2e2; color: #b91c1c; }
   .op-mod { background: #fef9c3; color: #854d0e; }
+
+  .legal-disclaimer {
+    padding: 10px 24px 14px;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: center;
+    border-top: 1px solid var(--border);
+  }
 </style>
 </head>
 <body>
@@ -758,6 +766,9 @@
     </button>
     <p class="text-sm text-muted mt-2" style="text-align:center">
       Username: <span class="font-mono">root</span> (fisso OpenWrt)
+    </p>
+    <p class="text-sm text-muted mt-2" style="text-align:center;font-size:10.5px">
+      Progetto non ufficiale. GL.iNet e OpenWrt sono marchi dei rispettivi titolari.
     </p>
   </div>
 </div>
@@ -786,6 +797,10 @@
 
   <!-- Main -->
   <div class="main" id="tab-content"></div>
+  <div class="legal-disclaimer">
+    Questo progetto non e' affiliato, approvato o sponsorizzato da GL.iNet, OpenWrt o dai rispettivi titolari.
+    GL.iNet e OpenWrt sono marchi registrati o marchi dei rispettivi proprietari. I contenuti e gli strumenti forniti qui non sono ufficiali.
+  </div>
 </div>
 
 <!-- ══════════ PENDING BAR ══════════ -->
