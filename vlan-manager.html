@@ -1,0 +1,2644 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VLAN Manager — GL.iNet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f4f1;
+    --surface: #ffffff;
+    --surface2: #f0f0ec;
+    --border: #ddddd8;
+    --border-strong: #c0c0bb;
+    --text: #1a1a18;
+    --text-muted: #6b6b66;
+    --text-dim: #9b9b96;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --accent-border: #bfdbfe;
+    --success: #16a34a;
+    --success-light: #f0fdf4;
+    --warning: #d97706;
+    --warning-light: #fffbeb;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+    --tag-allow: #dcfce7;
+    --tag-deny: #fee2e2;
+    --tag-allow-text: #15803d;
+    --tag-deny-text: #b91c1c;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --radius: 6px;
+    --radius-sm: 4px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13.5px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ── LOGIN ── */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+  }
+
+  .login-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 40px;
+    width: 360px;
+    box-shadow: var(--shadow-md);
+  }
+
+  .login-logo {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .login-logo::before {
+    content: '';
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  .login-box h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    letter-spacing: -0.3px;
+  }
+
+  .login-box p {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-bottom: 28px;
+  }
+
+  .field { margin-bottom: 16px; }
+
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .field input, .field select, .field textarea {
+    width: 100%;
+    padding: 8px 11px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+  }
+
+  .field input[type="password"] { letter-spacing: 0.1em; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: var(--radius-sm);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.12s;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    width: 100%;
+    justify-content: center;
+    padding: 9px;
+  }
+
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .btn-secondary:hover { background: var(--surface2); }
+
+  .btn-danger {
+    background: var(--danger-light);
+    color: var(--danger);
+    border-color: #fecaca;
+  }
+  .btn-danger:hover { background: #fee2e2; }
+
+  .btn-success {
+    background: var(--success);
+    color: #fff;
+    border-color: var(--success);
+  }
+  .btn-success:hover { background: #15803d; }
+
+  .btn-sm { padding: 4px 9px; font-size: 12px; }
+  .btn-icon { padding: 5px 7px; }
+
+  /* ── LAYOUT ── */
+  #app { display: none; min-height: 100vh; }
+
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .topbar-brand {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .topbar-brand .dot {
+    width: 7px; height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  .topbar-device {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    overflow-x: auto;
+  }
+
+  .tab {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all 0.12s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .tab-icon { font-size: 14px; }
+
+  /* ── MAIN CONTENT ── */
+  .main {
+    padding: 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+  }
+
+  .section-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .card-header {
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface2);
+  }
+
+  .card-title {
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: var(--mono);
+    color: var(--text);
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-body { padding: 16px; }
+
+  /* ── TABLE ── */
+  .table-wrap { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  .mono { font-family: var(--mono); font-size: 12.5px; }
+
+  /* ── BADGES / TAGS ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--mono);
+  }
+
+  .badge-blue { background: var(--accent-light); color: var(--accent); }
+  .badge-green { background: var(--success-light); color: var(--success); }
+  .badge-red { background: var(--danger-light); color: var(--danger); }
+  .badge-gray { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+  .badge-warning { background: var(--warning-light); color: var(--warning); }
+
+  .port-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: var(--radius-sm);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    margin: 1px;
+  }
+
+  .port-tag.tagged { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+  .port-tag.untagged { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+
+  /* ── GRID ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media(max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* ── STAT CARDS ── */
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .stat-sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-md);
+    animation: modal-in 0.15s ease;
+  }
+
+  @keyframes modal-in {
+    from { opacity: 0; transform: scale(0.97) translateY(-6px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-title { font-size: 14px; font-weight: 600; }
+  .modal-body { padding: 20px; }
+  .modal-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    background: var(--surface2);
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 18px;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+  }
+  .close-btn:hover { background: var(--surface2); color: var(--text); }
+
+  /* ── PENDING CHANGES BAR ── */
+  .pending-bar {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 12px 24px;
+    z-index: 150;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid #334155;
+    font-size: 13px;
+  }
+
+  .pending-bar.visible { display: flex; }
+  .pending-bar .pending-info { display: flex; align-items: center; gap: 10px; }
+  .pending-dot { width: 8px; height: 8px; background: #f59e0b; border-radius: 50%; animation: blink 1.2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .pending-count { font-family: var(--mono); font-weight: 600; }
+
+  .pending-bar .btn-success { background: #22c55e; border-color: #22c55e; }
+  .pending-bar .btn-secondary { background: transparent; border-color: #475569; color: #94a3b8; }
+  .pending-bar .btn-secondary:hover { background: #334155; }
+
+  /* ── PREVIEW DIFF ── */
+  .diff-block {
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    overflow-x: auto;
+    margin-top: 12px;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .diff-add { color: #4ade80; }
+  .diff-remove { color: #f87171; }
+  .diff-comment { color: #64748b; }
+  .diff-key { color: #93c5fd; }
+
+  /* ── TOGGLE ── */
+  .toggle-wrap { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+
+  .toggle {
+    position: relative;
+    width: 36px; height: 20px;
+    background: var(--border-strong);
+    border-radius: 999px;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .toggle::after {
+    content: '';
+    position: absolute;
+    left: 2px; top: 2px;
+    width: 16px; height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: left 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+
+  .toggle.on { background: var(--success); }
+  .toggle.on::after { left: 18px; }
+
+  /* ── PORT SELECTOR ── */
+  .port-selector {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+
+  .port-btn {
+    padding: 5px 11px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.1s;
+    user-select: none;
+  }
+
+  .port-btn:hover { border-color: var(--accent); }
+  .port-btn.tagged { background: #eff6ff; border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .port-btn.untagged { background: #f0fdf4; border-color: #16a34a; color: #16a34a; font-weight: 600; }
+  .port-btn.cpu { background: #fef9c3; border-color: #ca8a04; color: #854d0e; font-weight: 600; }
+
+  .port-legend {
+    display: flex;
+    gap: 14px;
+    margin-top: 8px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+  .port-legend span { display: flex; align-items: center; gap: 5px; }
+  .leg-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  /* ── FIREWALL MATRIX ── */
+  .fw-matrix {
+    display: grid;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .fw-row { display: contents; }
+  .fw-cell {
+    padding: 9px 12px;
+    background: var(--surface);
+    font-family: var(--mono);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .fw-cell.header { background: var(--surface2); font-weight: 600; justify-content: flex-start; color: var(--text-muted); cursor: default; font-size: 11px; }
+  .fw-cell.allow { background: #f0fdf4; color: #15803d; }
+  .fw-cell.deny  { background: #fef2f2; color: #b91c1c; }
+  .fw-cell.self  { background: var(--surface2); cursor: default; }
+  .fw-cell:not(.header):not(.self):hover { opacity: 0.8; }
+
+  /* ── AVAHI ── */
+  .avahi-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .avahi-row:last-child { border-bottom: none; }
+
+  /* ── ALERTS ── */
+  .alert {
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .alert-info { background: var(--accent-light); border: 1px solid var(--accent-border); color: #1e40af; }
+  .alert-warn { background: var(--warning-light); border: 1px solid #fde68a; color: #92400e; }
+
+  /* ── LOADING ── */
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+  }
+  .empty-state .empty-icon { font-size: 32px; margin-bottom: 10px; }
+  .empty-state p { font-size: 13px; }
+
+  /* ── INLINE HELPERS ── */
+  .row { display: flex; align-items: center; gap: 8px; }
+  .flex-1 { flex: 1; }
+  .gap-4 { gap: 4px; }
+  .mt-4 { margin-top: 16px; }
+  .mt-2 { margin-top: 8px; }
+  .text-muted { color: var(--text-muted); }
+  .text-sm { font-size: 12px; }
+  .font-mono { font-family: var(--mono); }
+
+  /* ── TOAST ── */
+  #toast-container {
+    position: fixed;
+    bottom: 70px;
+    right: 20px;
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  .toast {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: toast-in 0.2s ease;
+    max-width: 320px;
+  }
+
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateX(12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .toast.success { border-left: 3px solid #22c55e; }
+  .toast.error   { border-left: 3px solid #ef4444; }
+  .toast.info    { border-left: 3px solid #3b82f6; }
+
+  /* ── CHANGELOG LIST ── */
+  .change-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12.5px;
+  }
+  .change-item:last-child { border-bottom: none; }
+  .change-op {
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .op-add { background: #dcfce7; color: #15803d; }
+  .op-del { background: #fee2e2; color: #b91c1c; }
+  .op-mod { background: #fef9c3; color: #854d0e; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ LOGIN SCREEN ══════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">GL.iNet VLAN Manager</div>
+    <h1>Accedi al Router</h1>
+    <p>Usa le stesse credenziali dell'Admin Panel</p>
+
+    <div class="field">
+      <label>Indirizzo IP</label>
+      <input type="text" id="login-host" value="192.168.8.1" placeholder="192.168.8.1">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div id="login-error" style="color:var(--danger);font-size:12px;margin-bottom:12px;display:none;"></div>
+    <button class="btn btn-primary" id="login-btn" onclick="doLogin()">
+      <span id="login-btn-text">Connetti</span>
+    </button>
+    <p class="text-sm text-muted mt-2" style="text-align:center">
+      Username: <span class="font-mono">root</span> (fisso OpenWrt)
+    </p>
+  </div>
+</div>
+
+<!-- ══════════ MAIN APP ══════════ -->
+<div id="app">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-brand"><div class="dot"></div>VLAN Manager</div>
+      <div class="topbar-device" id="device-label">—</div>
+    </div>
+    <div class="topbar-right">
+      <span class="text-sm text-muted" id="fw-version"></span>
+      <button class="btn btn-secondary btn-sm" onclick="doLogout()">Esci</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('overview')" id="tab-overview"><span class="tab-icon">◈</span> Overview</div>
+    <div class="tab" onclick="showTab('vlans')" id="tab-vlans"><span class="tab-icon">⊞</span> VLAN</div>
+    <div class="tab" onclick="showTab('firewall')" id="tab-firewall"><span class="tab-icon">⛨</span> Firewall / ACL</div>
+    <div class="tab" onclick="showTab('avahi')" id="tab-avahi"><span class="tab-icon">⊹</span> Avahi / mDNS</div>
+  </div>
+
+  <!-- Main -->
+  <div class="main" id="tab-content"></div>
+</div>
+
+<!-- ══════════ PENDING BAR ══════════ -->
+<div class="pending-bar" id="pending-bar">
+  <div class="pending-info">
+    <div class="pending-dot"></div>
+    <span id="pending-count-label" class="pending-count">0 modifiche</span>
+    <span style="color:#94a3b8">in attesa di applicazione</span>
+  </div>
+  <div class="row">
+    <button class="btn btn-secondary btn-sm" onclick="showPreview()">Anteprima</button>
+    <button class="btn btn-secondary btn-sm" onclick="discardChanges()">Scarta</button>
+    <button class="btn btn-success btn-sm" onclick="applyChanges()">✓ Applica ora</button>
+  </div>
+</div>
+
+<!-- ══════════ TOAST ══════════ -->
+<div id="toast-container"></div>
+
+<!-- ══════════ MODALS ══════════ -->
+
+<!-- Modal: Nuova VLAN -->
+<div class="modal-overlay" id="modal-vlan">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-vlan-title">Nuova VLAN</span>
+      <button class="close-btn" onclick="closeModal('modal-vlan')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div class="field">
+          <label>VLAN ID</label>
+          <input type="number" id="vlan-id" min="1" max="4094" placeholder="es. 10">
+        </div>
+        <div class="field">
+          <label>Nome</label>
+          <input type="text" id="vlan-name" placeholder="es. IoT">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>Subnet (Gateway)</label>
+          <input type="text" id="vlan-ip" placeholder="es. 192.168.10.1">
+        </div>
+        <div class="field">
+          <label>Netmask</label>
+          <input type="text" id="vlan-mask" value="255.255.255.0" placeholder="255.255.255.0">
+        </div>
+      </div>
+      <div class="field">
+        <label>Porte fisiche</label>
+        <div class="port-selector" id="port-selector"></div>
+        <div class="port-legend">
+          <span><div class="leg-dot" style="background:#3b82f6"></div>Tagged (trunk)</span>
+          <span><div class="leg-dot" style="background:#16a34a"></div>Untagged (access)</span>
+          <span><div class="leg-dot" style="background:#ca8a04"></div>CPU/uplink</span>
+        </div>
+        <p class="text-sm text-muted mt-2">Click: untagged → tagged → off</p>
+      </div>
+      <div class="field">
+        <label>SSID Wi-Fi associato</label>
+        <select id="vlan-ssid">
+          <option value="">Nessuno</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>DHCP</label>
+        <label class="toggle-wrap">
+          <div class="toggle on" id="vlan-dhcp-toggle" onclick="toggleEl(this)"></div>
+          <span class="text-sm">Abilita server DHCP per questa VLAN</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-vlan')">Annulla</button>
+      <button class="btn btn-primary" style="width:auto" onclick="saveVlan()">Salva VLAN</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Preview Changes -->
+<div class="modal-overlay" id="modal-preview">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <span class="modal-title">Anteprima modifiche</span>
+      <button class="close-btn" onclick="closeModal('modal-preview')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-warn">
+        ⚠ Le modifiche verranno scritte su <span class="font-mono">/etc/config/network</span>, <span class="font-mono">firewall</span> e <span class="font-mono">dhcp</span>. Il router applicherà la nuova config senza reboot.
+      </div>
+      <div id="change-list"></div>
+      <div class="diff-block" id="diff-preview"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-preview')">Chiudi</button>
+      <button class="btn btn-success" onclick="applyChanges();closeModal('modal-preview')">✓ Applica ora</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Port Forwarding -->
+<div class="modal-overlay" id="modal-pf">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Aggiungi Port Forwarding</span>
+      <button class="close-btn" onclick="closeModal('modal-pf')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div class="field">
+          <label>Nome regola</label>
+          <input type="text" id="pf-name" placeholder="es. NAS-SMB">
+        </div>
+        <div class="field">
+          <label>Protocollo</label>
+          <select id="pf-proto">
+            <option>tcp</option><option>udp</option><option>tcp udp</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>VLAN sorgente (WAN zona)</label>
+          <select id="pf-src"></select>
+        </div>
+        <div class="field">
+          <label>Porta esterna</label>
+          <input type="number" id="pf-src-port" placeholder="es. 445">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>IP destinazione</label>
+          <input type="text" id="pf-dest-ip" placeholder="es. 192.168.10.50">
+        </div>
+        <div class="field">
+          <label>Porta interna</label>
+          <input type="number" id="pf-dest-port" placeholder="es. 445">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-pf')">Annulla</button>
+      <button class="btn btn-primary" style="width:auto" onclick="savePF()">Aggiungi regola</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Avahi bridge -->
+<div class="modal-overlay" id="modal-avahi">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Configura bridge mDNS</span>
+      <button class="close-btn" onclick="closeModal('modal-avahi')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-info">
+        ℹ Avahi rilancia i pacchetti mDNS tra le interfacce selezionate, permettendo la scoperta di servizi (AirPlay, Chromecast, stampanti, ecc.) tra VLAN diverse.
+      </div>
+      <div class="field">
+        <label>VLAN A</label>
+        <select id="avahi-if1"></select>
+      </div>
+      <div class="field">
+        <label>VLAN B</label>
+        <select id="avahi-if2"></select>
+      </div>
+      <div class="field">
+        <label>Direzione</label>
+        <select id="avahi-dir">
+          <option value="both">Bidirezionale (A ↔ B)</option>
+          <option value="a2b">Solo A → B</option>
+          <option value="b2a">Solo B → A</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-avahi')">Annulla</button>
+      <button class="btn btn-primary" style="width:auto" onclick="saveAvahiBridge()">Salva bridge</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+const state = {
+  host: '192.168.8.1',
+  sid: null,
+  rpcMode: 'glinet',  // 'glinet' (POST /rpc, params oggetto) | 'ubus' (POST /ubus, params array)
+  deviceModel: '',
+  fwVersion: '',
+  switchType: 'dsa',   // 'dsa' | 'swconfig'
+  vlans: [],
+  ports: [],
+  ssids: [],
+  pendingChanges: [],
+  fwRules: [],
+  pfRules: [],
+  avahiBridges: [],
+  apIsolation: {},
+  editingVlanIdx: null,
+  _deletedVlans: [],
+  _deletedPfRules: [],
+};
+
+// ═══════════════════════════════════════════════════
+//  RPC HELPERS
+// ═══════════════════════════════════════════════════
+async function rpc(method, params = {}) {
+  const body = { jsonrpc: '2.0', method, params, id: Math.floor(Math.random()*9999) };
+  // Se servito via proxy locale (localhost) usa URL relativo, altrimenti diretto al router
+  const isProxy = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const rpcUrl  = isProxy ? '/rpc' : `http://${state.host}/rpc`;
+  const r = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message || 'RPC error');
+  return d.result;
+}
+
+async function rpcCall(sid, service, method, params = {}) {
+  if (state.rpcMode === 'ubus') {
+    // /ubus: params come array [token, service, method, params]
+    const isProxy = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const ubusUrl = isProxy ? '/ubus' : `http://${state.host}/ubus`;
+    const body = { jsonrpc: '2.0', id: Math.floor(Math.random()*9999),
+                   method: 'call', params: [sid, service, method, params] };
+    const r = await fetch(ubusUrl, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error.message || 'ubus error');
+    // ubus risponde [code, result] — code 0 = successo
+    if (Array.isArray(d.result)) {
+      if (d.result[0] !== 0) throw new Error(`ubus error code: ${d.result[0]}`);
+      return d.result[1] ?? {};
+    }
+    return d.result;
+  }
+  // /rpc GL.iNet: params come oggetto {sid, service, method, params}
+  return rpc('call', { sid, service, method, params });
+}
+
+// UCI shorthand via ubus
+async function uciGet(config, section, option) {
+  return rpcCall(state.sid, 'uci', 'get', { config, section, option });
+}
+async function uciSet(config, section, option, value) {
+  return rpcCall(state.sid, 'uci', 'set', { config, section, option, value });
+}
+async function uciCommit(config) {
+  return rpcCall(state.sid, 'uci', 'commit', { config });
+}
+async function uciSetValues(config, section, values) {
+  return rpcCall(state.sid, 'uci', 'set', { config, section, values });
+}
+async function uciAdd(config, type, name) {
+  const p = { config, type };
+  if (name) p.name = name;
+  return rpcCall(state.sid, 'uci', 'add', p);
+}
+async function uciDelete(config, section, option) {
+  const p = { config, section };
+  if (option !== undefined) p.option = option;
+  return rpcCall(state.sid, 'uci', 'delete', p);
+}
+// Normalize ubus response: handles both {values:...} and [0,{values:...}]
+function rpcVal(r) {
+  return Array.isArray(r) ? r[1] : r;
+}
+
+function uciValues(raw) {
+  const val = rpcVal(raw) || {};
+  if (val.values) return val.values;
+  if (val.value && typeof val.value === 'object') return val.value;
+  const keys = Object.keys(val);
+  if (keys.length === 1 && val[keys[0]] && typeof val[keys[0]] === 'object' && !val[keys[0]]['.type']) {
+    return val[keys[0]].values || val[keys[0]].value || val[keys[0]];
+  }
+  return val;
+}
+
+function uciList(value) {
+  if (Array.isArray(value)) return value.flatMap(uciList);
+  return String(value || '').split(/\s+/).filter(Boolean);
+}
+
+// ═══════════════════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════════════════
+async function doLogin() {
+  const host = document.getElementById('login-host').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const btn = document.getElementById('login-btn');
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  document.getElementById('login-btn-text').innerHTML = '<span class="spinner"></span> Connessione…';
+  state.host = host;
+
+  try {
+    // ── Tentativo 1: /ubus (OpenWrt standard, password in chiaro, no crypt) ──
+    const isProxy = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const ubusUrl = isProxy ? '/ubus' : `http://${host}/ubus`;
+    try {
+      console.log('[auth] Tentativo /ubus...');
+      const r = await fetch(ubusUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 1, method: 'call',
+          params: ['00000000000000000000000000000000', 'session', 'login',
+                   { username: 'root', password: pass }]
+        })
+      });
+      const d = await r.json();
+      console.log('[auth] /ubus risposta →', d);
+      if (d.result && d.result[0] === 0 && d.result[1]?.ubus_rpc_session) {
+        state.sid = d.result[1].ubus_rpc_session;
+        state.rpcMode = 'ubus';
+        console.log('[auth] Login OK via /ubus, sid =', state.sid.substring(0,8) + '…');
+        await initApp();
+        return;
+      }
+      console.log('[auth] /ubus login fallito (result[0] !== 0 o token assente)');
+    } catch(ubusErr) {
+      console.log('[auth] /ubus non raggiungibile:', ubusErr.message);
+    }
+
+    // ── Tentativo 2: /rpc GL.iNet con challenge-response + Unix crypt ──
+    console.log('[auth] Tentativo /rpc GL.iNet challenge-response...');
+    const ch = await rpc('challenge', { username: 'root' });
+    const { alg, salt, nonce } = ch;
+    const hashMethod = ch['hash-method'] || 'md5';
+    console.log('[auth] challenge →', { alg, salt, nonce, hashMethod });
+
+    if (!nonce) throw new Error('Risposta challenge non valida (nonce mancante)');
+
+    const cipher = await cryptPassword(pass, alg, salt);
+    const data = `root:${cipher}:${nonce}`;
+    const hash = await authOuterHash(data, hashMethod);
+    console.log('[auth] cipher  =', cipher);
+    console.log('[auth] data    =', `root:<cipher>:${nonce}`);
+    console.log('[auth] hash    =', hash, `(${hashMethod.toUpperCase()}, ${hash.length} char)`);
+    console.log('[auth] VERIFICA cipher con: openssl passwd -' + (alg===5?'5':'1') +
+                ' -salt "' + salt + '" "TUA_PASSWORD"');
+
+    const login = await rpc('login', { username: 'root', hash });
+    console.log('[auth] login →', login);
+    const NULL_SID = '00000000000000000000000000000000';
+    if (!login || !login.sid || login.sid === NULL_SID) throw new Error('Credenziali errate (password sbagliata o algoritmo hash non supportato)');
+    state.sid = login.sid;
+    state.rpcMode = 'glinet';
+    console.log('[auth] Login OK via /rpc GL.iNet');
+
+    await initApp();
+  } catch(e) {
+    console.error('[auth] Errore login:', e);
+    errEl.textContent = e.message || 'Errore di connessione. Verifica IP e password.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    document.getElementById('login-btn-text').textContent = 'Connetti';
+  }
+}
+
+function doLogout() {
+  state.sid = null;
+  state.rpcMode = 'glinet';
+  state.vlans = [];
+  state.pendingChanges = [];
+  state._deletedVlans = [];
+  state._deletedPfRules = [];
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  updatePendingBar();
+}
+
+function sha256hex(str) {
+  const b = sha256bytes(new TextEncoder().encode(str));
+  return Array.from(b, x => x.toString(16).padStart(2,'0')).join('');
+}
+
+// MD5 utility (browser-compatible, for GL.iNet auth)
+async function md5(str) {
+  const buf = new TextEncoder().encode(str);
+  // Use pure-JS MD5 (no SubtleCrypto doesn't support MD5 natively)
+  return md5js(str);
+}
+
+function md5js(str) {
+  // Minimal MD5 implementation
+  function safeAdd(x, y) { const lsw=(x&0xFFFF)+(y&0xFFFF); return (((x>>16)+(y>>16)+(lsw>>16))<<16)|(lsw&0xFFFF); }
+  function bitRotateLeft(num, cnt) { return (num<<cnt)|(num>>>(32-cnt)); }
+  function md5cmn(q,a,b,x,s,t) { return safeAdd(bitRotateLeft(safeAdd(safeAdd(a,q),safeAdd(x,t)),s),b); }
+  function md5ff(a,b,c,d,x,s,t) { return md5cmn((b&c)|((~b)&d),a,b,x,s,t); }
+  function md5gg(a,b,c,d,x,s,t) { return md5cmn((b&d)|(c&(~d)),a,b,x,s,t); }
+  function md5hh(a,b,c,d,x,s,t) { return md5cmn(b^c^d,a,b,x,s,t); }
+  function md5ii(a,b,c,d,x,s,t) { return md5cmn(c^(b|(~d)),a,b,x,s,t); }
+  function binlMD5(x,len) {
+    x[len>>5]|=0x80<<(len%32); x[(((len+64)>>>9)<<4)+14]=len;
+    let i,olda,oldb,oldc,oldd,a=1732584193,b=-271733879,c=-1732584194,d=271733878;
+    for(i=0;i<x.length;i+=16){olda=a;oldb=b;oldc=c;oldd=d;
+      a=md5ff(a,b,c,d,x[i],7,-680876936);d=md5ff(d,a,b,c,x[i+1],12,-389564586);c=md5ff(c,d,a,b,x[i+2],17,606105819);b=md5ff(b,c,d,a,x[i+3],22,-1044525330);
+      a=md5ff(a,b,c,d,x[i+4],7,-176418897);d=md5ff(d,a,b,c,x[i+5],12,1200080426);c=md5ff(c,d,a,b,x[i+6],17,-1473231341);b=md5ff(b,c,d,a,x[i+7],22,-45705983);
+      a=md5ff(a,b,c,d,x[i+8],7,1770035416);d=md5ff(d,a,b,c,x[i+9],12,-1958414417);c=md5ff(c,d,a,b,x[i+10],17,-42063);b=md5ff(b,c,d,a,x[i+11],22,-1990404162);
+      a=md5ff(a,b,c,d,x[i+12],7,1804603682);d=md5ff(d,a,b,c,x[i+13],12,-40341101);c=md5ff(c,d,a,b,x[i+14],17,-1502002290);b=md5ff(b,c,d,a,x[i+15],22,1236535329);
+      a=md5gg(a,b,c,d,x[i+1],5,-165796510);d=md5gg(d,a,b,c,x[i+6],9,-1069501632);c=md5gg(c,d,a,b,x[i+11],14,643717713);b=md5gg(b,c,d,a,x[i],20,-373897302);
+      a=md5gg(a,b,c,d,x[i+5],5,-701558691);d=md5gg(d,a,b,c,x[i+10],9,38016083);c=md5gg(c,d,a,b,x[i+15],14,-660478335);b=md5gg(b,c,d,a,x[i+4],20,-405537848);
+      a=md5gg(a,b,c,d,x[i+9],5,568446438);d=md5gg(d,a,b,c,x[i+14],9,-1019803690);c=md5gg(c,d,a,b,x[i+3],14,-187363961);b=md5gg(b,c,d,a,x[i+8],20,1163531501);
+      a=md5gg(a,b,c,d,x[i+13],5,-1444681467);d=md5gg(d,a,b,c,x[i+2],9,-51403784);c=md5gg(c,d,a,b,x[i+7],14,1735328473);b=md5gg(b,c,d,a,x[i+12],20,-1926607734);
+      a=md5hh(a,b,c,d,x[i+5],4,-378558);d=md5hh(d,a,b,c,x[i+8],11,-2022574463);c=md5hh(c,d,a,b,x[i+11],16,1839030562);b=md5hh(b,c,d,a,x[i+14],23,-35309556);
+      a=md5hh(a,b,c,d,x[i+1],4,-1530992060);d=md5hh(d,a,b,c,x[i+4],11,1272893353);c=md5hh(c,d,a,b,x[i+7],16,-155497632);b=md5hh(b,c,d,a,x[i+10],23,-1094730640);
+      a=md5hh(a,b,c,d,x[i+13],4,681279174);d=md5hh(d,a,b,c,x[i],11,-358537222);c=md5hh(c,d,a,b,x[i+3],16,-722521979);b=md5hh(b,c,d,a,x[i+6],23,76029189);
+      a=md5hh(a,b,c,d,x[i+9],4,-640364487);d=md5hh(d,a,b,c,x[i+12],11,-421815835);c=md5hh(c,d,a,b,x[i+15],16,530742520);b=md5hh(b,c,d,a,x[i+2],23,-995338651);
+      a=md5ii(a,b,c,d,x[i],6,-198630844);d=md5ii(d,a,b,c,x[i+7],10,1126891415);c=md5ii(c,d,a,b,x[i+14],15,-1416354905);b=md5ii(b,c,d,a,x[i+5],21,-57434055);
+      a=md5ii(a,b,c,d,x[i+12],6,1700485571);d=md5ii(d,a,b,c,x[i+3],10,-1894986606);c=md5ii(c,d,a,b,x[i+10],15,-1051523);b=md5ii(b,c,d,a,x[i+1],21,-2054922799);
+      a=md5ii(a,b,c,d,x[i+8],6,1873313359);d=md5ii(d,a,b,c,x[i+15],10,-30611744);c=md5ii(c,d,a,b,x[i+6],15,-1560198380);b=md5ii(b,c,d,a,x[i+13],21,1309151649);
+      a=md5ii(a,b,c,d,x[i+4],6,-145523070);d=md5ii(d,a,b,c,x[i+11],10,-1120210379);c=md5ii(c,d,a,b,x[i+2],15,718787259);b=md5ii(b,c,d,a,x[i+9],21,-343485551);
+      a=safeAdd(a,olda);b=safeAdd(b,oldb);c=safeAdd(c,oldc);d=safeAdd(d,oldd);
+    } return [a,b,c,d];
+  }
+  function binl2hex(binarray) {
+    const hexTab='0123456789abcdef';let str='';
+    for(let i=0;i<binarray.length*4;i++) str+=hexTab.charAt((binarray[i>>2]>>((i%4)*8+4))&0xF)+hexTab.charAt((binarray[i>>2]>>((i%4)*8))&0xF);
+    return str;
+  }
+  function str2binl(str) {
+    const bin={};
+    for(let i=0;i<str.length*8;i+=8) bin[i>>5]|=(str.charCodeAt(i/8)&0xFF)<<(i%32);
+    return bin;
+  }
+  const binaryStr = unescape(encodeURIComponent(str));
+  const binArr = str2binl(binaryStr);
+  const binArrKeys = Object.keys(binArr).map(Number).sort((a,b)=>a-b);
+  const maxKey = binArrKeys.length ? Math.max(...binArrKeys) : -1;
+  const arr = new Array(maxKey+1).fill(0);
+  for(const k of binArrKeys) arr[k]=binArr[k];
+  return binl2hex(binlMD5(arr, binaryStr.length*8));
+}
+
+// Byte-array MD5 (for md5crypt rounds)
+function md5bytes(data) {
+  function safeAdd(x,y){const l=(x&0xFFFF)+(y&0xFFFF);return(((x>>>16)+(y>>>16)+(l>>>16))<<16)|(l&0xFFFF);}
+  function rol(x,n){return(x<<n)|(x>>>(32-n));}
+  function ff(a,b,c,d,x,s,t){return safeAdd(rol(safeAdd(safeAdd(a,(b&c)|((~b)&d)),safeAdd(x,t)),s),b);}
+  function gg(a,b,c,d,x,s,t){return safeAdd(rol(safeAdd(safeAdd(a,(b&d)|(c&(~d))),safeAdd(x,t)),s),b);}
+  function hh(a,b,c,d,x,s,t){return safeAdd(rol(safeAdd(safeAdd(a,b^c^d),safeAdd(x,t)),s),b);}
+  function ii(a,b,c,d,x,s,t){return safeAdd(rol(safeAdd(safeAdd(a,c^(b|(~d))),safeAdd(x,t)),s),b);}
+  const len = data.length;
+  const padLen = ((len + 72) >>> 6) << 6;
+  const padded = new Uint8Array(padLen);
+  padded.set(data);
+  padded[len] = 0x80;
+  const dv = new DataView(padded.buffer);
+  dv.setUint32(padLen - 8, (len * 8) >>> 0, true);
+  dv.setUint32(padLen - 4, 0, true);
+  let a=0x67452301,b=0xEFCDAB89,c=0x98BADCFE,d=0x10325476;
+  for (let i = 0; i < padLen; i += 64) {
+    const M = [];
+    for (let j = 0; j < 16; j++) M[j] = dv.getUint32(i + j*4, true);
+    const aa=a,bb=b,cc=c,dd=d;
+    a=ff(a,b,c,d,M[0],7,-680876936);d=ff(d,a,b,c,M[1],12,-389564586);c=ff(c,d,a,b,M[2],17,606105819);b=ff(b,c,d,a,M[3],22,-1044525330);
+    a=ff(a,b,c,d,M[4],7,-176418897);d=ff(d,a,b,c,M[5],12,1200080426);c=ff(c,d,a,b,M[6],17,-1473231341);b=ff(b,c,d,a,M[7],22,-45705983);
+    a=ff(a,b,c,d,M[8],7,1770035416);d=ff(d,a,b,c,M[9],12,-1958414417);c=ff(c,d,a,b,M[10],17,-42063);b=ff(b,c,d,a,M[11],22,-1990404162);
+    a=ff(a,b,c,d,M[12],7,1804603682);d=ff(d,a,b,c,M[13],12,-40341101);c=ff(c,d,a,b,M[14],17,-1502002290);b=ff(b,c,d,a,M[15],22,1236535329);
+    a=gg(a,b,c,d,M[1],5,-165796510);d=gg(d,a,b,c,M[6],9,-1069501632);c=gg(c,d,a,b,M[11],14,643717713);b=gg(b,c,d,a,M[0],20,-373897302);
+    a=gg(a,b,c,d,M[5],5,-701558691);d=gg(d,a,b,c,M[10],9,38016083);c=gg(c,d,a,b,M[15],14,-660478335);b=gg(b,c,d,a,M[4],20,-405537848);
+    a=gg(a,b,c,d,M[9],5,568446438);d=gg(d,a,b,c,M[14],9,-1019803690);c=gg(c,d,a,b,M[3],14,-187363961);b=gg(b,c,d,a,M[8],20,1163531501);
+    a=gg(a,b,c,d,M[13],5,-1444681467);d=gg(d,a,b,c,M[2],9,-51403784);c=gg(c,d,a,b,M[7],14,1735328473);b=gg(b,c,d,a,M[12],20,-1926607734);
+    a=hh(a,b,c,d,M[5],4,-378558);d=hh(d,a,b,c,M[8],11,-2022574463);c=hh(c,d,a,b,M[11],16,1839030562);b=hh(b,c,d,a,M[14],23,-35309556);
+    a=hh(a,b,c,d,M[1],4,-1530992060);d=hh(d,a,b,c,M[4],11,1272893353);c=hh(c,d,a,b,M[7],16,-155497632);b=hh(b,c,d,a,M[10],23,-1094730640);
+    a=hh(a,b,c,d,M[13],4,681279174);d=hh(d,a,b,c,M[0],11,-358537222);c=hh(c,d,a,b,M[3],16,-722521979);b=hh(b,c,d,a,M[6],23,76029189);
+    a=hh(a,b,c,d,M[9],4,-640364487);d=hh(d,a,b,c,M[12],11,-421815835);c=hh(c,d,a,b,M[15],16,530742520);b=hh(b,c,d,a,M[2],23,-995338651);
+    a=ii(a,b,c,d,M[0],6,-198630844);d=ii(d,a,b,c,M[7],10,1126891415);c=ii(c,d,a,b,M[14],15,-1416354905);b=ii(b,c,d,a,M[5],21,-57434055);
+    a=ii(a,b,c,d,M[12],6,1700485571);d=ii(d,a,b,c,M[3],10,-1894986606);c=ii(c,d,a,b,M[10],15,-1051523);b=ii(b,c,d,a,M[1],21,-2054922799);
+    a=ii(a,b,c,d,M[8],6,1873313359);d=ii(d,a,b,c,M[15],10,-30611744);c=ii(c,d,a,b,M[6],15,-1560198380);b=ii(b,c,d,a,M[13],21,1309151649);
+    a=ii(a,b,c,d,M[4],6,-145523070);d=ii(d,a,b,c,M[11],10,-1120210379);c=ii(c,d,a,b,M[2],15,718787259);b=ii(b,c,d,a,M[9],21,-343485551);
+    a=safeAdd(a,aa);b=safeAdd(b,bb);c=safeAdd(c,cc);d=safeAdd(d,dd);
+  }
+  const out = new Uint8Array(16);
+  const rv = new DataView(out.buffer);
+  rv.setUint32(0,a>>>0,true); rv.setUint32(4,b>>>0,true);
+  rv.setUint32(8,c>>>0,true); rv.setUint32(12,d>>>0,true);
+  return out;
+}
+
+// Proper MD5crypt ($1$) — matches musl libc crypt() used by OpenWrt/GL.iNet
+// WARNING: NOT identical to openssl passwd -1 for password lengths that are
+// powers of 2 (1,2,4,8,16,32 chars). musl and PHK/glibc/openssl diverge there.
+function md5cryptImpl(password, salt) {
+  const enc = new TextEncoder();
+  const pass = enc.encode(password);
+  const saltB = enc.encode(salt);
+  const magic = enc.encode('$1$');
+  const cat = (...arrs) => {
+    const len = arrs.reduce((n,a)=>n+a.length,0);
+    const out = new Uint8Array(len); let off=0;
+    for (const a of arrs){out.set(a,off);off+=a.length;}
+    return out;
+  };
+  const to64 = (v,n) => {
+    const t='./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+    let s=''; while(n-- > 0){s+=t[v&0x3f];v>>>=6;} return s;
+  };
+  // Digest B = MD5(pass + salt + pass)
+  const digestB = md5bytes(cat(pass, saltB, pass));
+  // Build digest A: pass + "$1$" + salt + [digestB cyclically for plen bytes]
+  let aData = cat(pass, magic, saltB);
+  for (let i=pass.length;i>0;i-=16) aData=cat(aData,digestB.slice(0,Math.min(i,16)));
+  // Loop bit PHK originale — identico a musl libc (verificato su src/crypt/crypt_md5.c)
+  // musl usa: for(i=klen; i; i>>=1) che è equivalente a for(i=klen; i>0; i>>=1)
+  for (let i=pass.length;i>0;i>>=1)
+    aData=cat(aData,(i&1)?new Uint8Array([0]):pass.slice(0,1));
+  let digest = md5bytes(aData);
+  // 1000 rounds
+  for (let i=0;i<1000;i++) {
+    const pieces = [];
+    if (i&1) pieces.push(pass); else pieces.push(digest);
+    if (i%3) pieces.push(saltB);
+    if (i%7) pieces.push(pass);
+    if (i&1) pieces.push(digest); else pieces.push(pass);
+    digest = md5bytes(cat(...pieces));
+  }
+  const f = digest;
+  return `$1$${salt}$`
+    + to64((f[0]<<16)|(f[6]<<8)|f[12], 4)
+    + to64((f[1]<<16)|(f[7]<<8)|f[13], 4)
+    + to64((f[2]<<16)|(f[8]<<8)|f[14], 4)
+    + to64((f[3]<<16)|(f[9]<<8)|f[15], 4)
+    + to64((f[4]<<16)|(f[10]<<8)|f[5], 4)
+    + to64(f[11], 2);
+}
+
+// SHA-256 puro JS (no WebCrypto — funziona su HTTP)
+function sha256bytes(data) {
+  const K = new Uint32Array([
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+  ]);
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  const msgLen = data.length;
+  const padLen = msgLen % 64 < 56 ? 56 - msgLen % 64 : 120 - msgLen % 64;
+  const buf = new Uint8Array(msgLen + padLen + 8);
+  buf.set(data);
+  buf[msgLen] = 0x80;
+  const dv = new DataView(buf.buffer);
+  dv.setUint32(buf.length - 4, (msgLen * 8) >>> 0, false);
+  let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,
+      h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;
+  const W = new Uint32Array(64);
+  for (let off = 0; off < buf.length; off += 64) {
+    const bv = new DataView(buf.buffer, off, 64);
+    for (let i=0;i<16;i++) W[i] = bv.getUint32(i*4, false);
+    for (let i=16;i<64;i++) {
+      const s0 = rotr(W[i-15],7)^rotr(W[i-15],18)^(W[i-15]>>>3);
+      const s1 = rotr(W[i-2],17)^rotr(W[i-2],19)^(W[i-2]>>>10);
+      W[i] = (W[i-16]+s0+W[i-7]+s1)>>>0;
+    }
+    let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,h=h7;
+    for (let i=0;i<64;i++) {
+      const S1 = rotr(e,6)^rotr(e,11)^rotr(e,25);
+      const ch = (e&f)^(~e&g);
+      const t1 = (h+S1+ch+K[i]+W[i])>>>0;
+      const S0 = rotr(a,2)^rotr(a,13)^rotr(a,22);
+      const mj = (a&b)^(a&c)^(b&c);
+      const t2 = (S0+mj)>>>0;
+      h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;
+    }
+    h0=(h0+a)>>>0;h1=(h1+b)>>>0;h2=(h2+c)>>>0;h3=(h3+d)>>>0;
+    h4=(h4+e)>>>0;h5=(h5+f)>>>0;h6=(h6+g)>>>0;h7=(h7+h)>>>0;
+  }
+  const out = new Uint8Array(32);
+  const ov = new DataView(out.buffer);
+  [h0,h1,h2,h3,h4,h5,h6,h7].forEach((v,i) => ov.setUint32(i*4, v, false));
+  return out;
+}
+
+// SHA-256crypt ($5$) — spec Drepper, corrisponde a openssl passwd -5
+function sha256cryptImpl(password, salt) {
+  const enc = new TextEncoder();
+  const P = enc.encode(password);
+  const S = enc.encode(salt);
+  const passlen = P.length, saltlen = S.length;
+  const cat = (...arrs) => {
+    const len = arrs.reduce((n,a)=>n+a.length,0);
+    const out = new Uint8Array(len); let pos=0;
+    for (const a of arrs){out.set(a,pos);pos+=a.length;} return out;
+  };
+  const stretch = (src, n) => { const o=new Uint8Array(n); for(let i=0;i<n;i++) o[i]=src[i%src.length]; return o; };
+  const to64 = (v,n) => { const t='./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'; let s=''; while(n-->0){s+=t[v&0x3f];v>>>=6;} return s; };
+
+  const dB = sha256bytes(cat(P, S, P));
+  let aData = cat(P, S, stretch(dB, passlen));
+  for (let cnt=passlen; cnt>0; cnt>>=1) aData = cat(aData, (cnt&1)?dB:P);
+  let dA = sha256bytes(aData);
+
+  const pIn = new Uint8Array(passlen*passlen);
+  for (let i=0;i<passlen;i++) pIn.set(P, i*passlen);
+  const pStr = stretch(sha256bytes(pIn), passlen);
+
+  const sCount = 16+dA[0];
+  const sIn = new Uint8Array(saltlen*sCount);
+  for (let i=0;i<sCount;i++) sIn.set(S, i*saltlen);
+  const sStr = stretch(sha256bytes(sIn), saltlen);
+
+  for (let i=0; i<5000; i++) {
+    const c=[];
+    if (i&1) c.push(pStr); else c.push(dA);
+    if (i%3) c.push(sStr);
+    if (i%7) c.push(pStr);
+    if (i&1) c.push(dA); else c.push(pStr);
+    dA = sha256bytes(cat(...c));
+  }
+  const f=dA;
+  return `$5$${salt}$`
+    +to64((f[0]<<16)|(f[10]<<8)|f[20],4)+to64((f[21]<<16)|(f[1]<<8)|f[11],4)
+    +to64((f[12]<<16)|(f[22]<<8)|f[2],4)+to64((f[3]<<16)|(f[13]<<8)|f[23],4)
+    +to64((f[24]<<16)|(f[4]<<8)|f[14],4)+to64((f[15]<<16)|(f[25]<<8)|f[5],4)
+    +to64((f[6]<<16)|(f[16]<<8)|f[26],4)+to64((f[27]<<16)|(f[7]<<8)|f[17],4)
+    +to64((f[18]<<16)|(f[28]<<8)|f[8],4)+to64((f[9]<<16)|(f[19]<<8)|f[29],4)
+    +to64((f[31]<<8)|f[30],3);
+}
+
+async function cryptPassword(pass, alg, salt) {
+  const algNum = Number(alg);
+  if (algNum === 1) return md5cryptImpl(pass, salt);
+  if (algNum === 5) return sha256cryptImpl(pass, salt);
+  throw new Error(`Algoritmo crypt non supportato (alg=${alg}). Supportati: 1=MD5crypt, 5=SHA-256crypt.`);
+}
+
+async function authOuterHash(data, hashMethod) {
+  const method = String(hashMethod || 'md5').toLowerCase();
+  if (method === 'md5') return md5(data);
+  if (method === 'sha256' || method === 'sha-256') return sha256hex(data);
+  throw new Error(`Metodo hash login non supportato (${hashMethod}). Supportati: md5, sha256.`);
+}
+
+// Auto-verifica SHA-256 e SHA-256crypt al caricamento della pagina
+(function selfTest() {
+  const sha256abc = sha256hex('abc');
+  const expectedAbc = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
+  if (sha256abc !== expectedAbc) {
+    console.error('[selftest] SHA-256("abc") SBAGLIATO:', sha256abc, '≠', expectedAbc);
+  } else {
+    console.log('[selftest] SHA-256("abc") OK ✓');
+  }
+  // sha256crypt noto: openssl passwd -5 -salt "saltstring" "Hello world!"
+  // = $5$saltstring$5B8vYYiY.CVt1RlTTf8KbXBH3hsxY/GNooZaBBGWEc5
+  const cipher5 = sha256cryptImpl('Hello world!', 'saltstring');
+  const expected5 = '$5$saltstring$5B8vYYiY.CVt1RlTTf8KbXBH3hsxY/GNooZaBBGWEc5';
+  if (cipher5 !== expected5) {
+    console.error('[selftest] sha256crypt SBAGLIATO:', cipher5, '≠', expected5);
+  } else {
+    console.log('[selftest] sha256crypt OK ✓');
+  }
+})();
+
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
+async function initApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('login-btn').disabled = false;
+  document.getElementById('login-btn-text').textContent = 'Connetti';
+
+  // Detect device info
+  try {
+    const info = await rpcCall(state.sid, 'system', 'board', {});
+    state.deviceModel = info?.model || 'GL.iNet Router';
+    state.fwVersion = info?.release?.version || '';
+    document.getElementById('device-label').textContent = state.deviceModel;
+    document.getElementById('fw-version').textContent = `fw ${state.fwVersion}`;
+
+    // Detect switch type: SFT1200 → swconfig, MT6000 → DSA
+    const model = (info?.model || '').toLowerCase();
+    state.switchType = (model.includes('sft1200') || model.includes('mt300') || model.includes('ar750')) ? 'swconfig' : 'dsa';
+  } catch(e) {
+    state.deviceModel = 'GL.iNet Router';
+    state.switchType = 'dsa';
+    document.getElementById('device-label').textContent = state.deviceModel;
+  }
+
+  try {
+    await loadRealData();
+  } catch(e) {
+    console.warn('Fallback to demo data:', e);
+    loadDemoData();
+  }
+  showTab('overview');
+}
+
+// ─── DEMO DATA ───────────────────────────────────
+function loadDemoData() {
+  // Ports depend on switch type
+  if (state.switchType === 'swconfig') {
+    state.ports = [
+      { id: 'wan',  label: 'WAN',  type: 'wan' },
+      { id: 'lan1', label: 'LAN1', type: 'lan' },
+      { id: 'lan2', label: 'LAN2', type: 'lan' },
+      { id: 'cpu0', label: 'CPU',  type: 'cpu' },
+    ];
+  } else {
+    state.ports = [
+      { id: 'wan',  label: 'WAN',  type: 'wan' },
+      { id: 'lan1', label: 'LAN1', type: 'lan' },
+      { id: 'lan2', label: 'LAN2', type: 'lan' },
+      { id: 'lan3', label: 'LAN3', type: 'lan' },
+      { id: 'lan4', label: 'LAN4', type: 'lan' },
+      { id: 'cpu0', label: 'CPU',  type: 'cpu' },
+    ];
+  }
+
+  state.ssids = [
+    { id: 'wlan0', label: 'GL-SFT1200 (2.4GHz)' },
+    { id: 'wlan1', label: 'GL-SFT1200-5G (5GHz)' },
+  ];
+
+  state.vlans = [
+    { id: 10, name: 'Trusted', ip: '192.168.10.1', mask: '255.255.255.0', ports: { lan1: 'untagged', lan2: 'untagged', cpu0: 'tagged' }, ssid: 'wlan1', dhcp: true },
+    { id: 20, name: 'IoT',     ip: '192.168.20.1', mask: '255.255.255.0', ports: { lan3: 'untagged', cpu0: 'tagged' }, ssid: 'wlan0', dhcp: true },
+    { id: 30, name: 'Guest',   ip: '192.168.30.1', mask: '255.255.255.0', ports: { cpu0: 'tagged' }, ssid: '', dhcp: true },
+  ];
+
+  state.fwRules = [
+    { src: 'Trusted', dst: 'IoT',     action: 'deny'  },
+    { src: 'Trusted', dst: 'Guest',   action: 'deny'  },
+    { src: 'IoT',     dst: 'Trusted', action: 'deny'  },
+    { src: 'IoT',     dst: 'Guest',   action: 'deny'  },
+    { src: 'Guest',   dst: 'Trusted', action: 'deny'  },
+    { src: 'Guest',   dst: 'IoT',     action: 'deny'  },
+  ];
+
+  state.pfRules = [
+    { name: 'NAS-SMB', proto: 'tcp', srcZone: 'Trusted', srcPort: 445, destIp: '192.168.10.50', destPort: 445 },
+  ];
+
+  state.avahiBridges = [
+    { if1: 'vlan10', if2: 'vlan20', dir: 'both', desc: 'Trusted ↔ IoT (AirPlay)' },
+  ];
+
+  state.apIsolation = { vlan10: false, vlan20: true, vlan30: true };
+}
+
+// ─── LOAD REAL DATA FROM ROUTER ──────────────────
+async function loadRealData() {
+  const [netRaw, wifiRaw, dhcpRaw, fwRaw] = await Promise.all([
+    rpcCall(state.sid, 'uci', 'get', { config: 'network'  }).catch(() => ({})),
+    rpcCall(state.sid, 'uci', 'get', { config: 'wireless' }).catch(() => ({})),
+    rpcCall(state.sid, 'uci', 'get', { config: 'dhcp'     }).catch(() => ({})),
+    rpcCall(state.sid, 'uci', 'get', { config: 'firewall' }).catch(() => ({})),
+  ]);
+  const net  = uciValues(netRaw);
+  const wifi = uciValues(wifiRaw);
+  const dhcp = uciValues(dhcpRaw);
+  const fw   = uciValues(fwRaw);
+
+  if (Object.values(net).some(sec => sec?.['.type'] === 'switch_vlan')) {
+    state.switchType = 'swconfig';
+  }
+
+  // Port definitions for swconfig (GL-SFT1200 / Opal)
+  // Port 0=WAN, 1=LAN1, 2=LAN2, 5=CPU uplink
+  if (state.switchType === 'swconfig') {
+    state.ports = [
+      { id: 'wan',  label: 'WAN',  type: 'wan', swPort: 0 },
+      { id: 'lan1', label: 'LAN1', type: 'lan', swPort: 1 },
+      { id: 'lan2', label: 'LAN2', type: 'lan', swPort: 2 },
+      { id: 'cpu0', label: 'CPU',  type: 'cpu', swPort: 5 },
+    ];
+  } else {
+    state.ports = [
+      { id: 'wan',  label: 'WAN',  type: 'wan' },
+      { id: 'lan1', label: 'LAN1', type: 'lan' },
+      { id: 'lan2', label: 'LAN2', type: 'lan' },
+      { id: 'lan3', label: 'LAN3', type: 'lan' },
+      { id: 'lan4', label: 'LAN4', type: 'lan' },
+    ];
+  }
+
+  // switch_vlan map: vlan_id(string) → { section, ports }
+  const swVlanByVid = {};
+  if (state.switchType === 'swconfig') {
+    Object.entries(net).forEach(([key, sec]) => {
+      if (sec['.type'] === 'switch_vlan' && sec.vlan)
+        swVlanByVid[sec.vlan] = { section: key, ports: sec.ports || '' };
+    });
+  }
+
+  // wifi-iface: network_name → [{ id, label }]
+  const wifiByNet = {};
+  Object.entries(wifi).forEach(([key, sec]) => {
+    if (sec['.type'] === 'wifi-iface' && sec.network && sec.ssid) {
+      const id = sec.ifname || key;
+      uciList(sec.network).forEach(netName => {
+        (wifiByNet[netName] = wifiByNet[netName] || []).push({ id, section: key, label: sec.ssid });
+      });
+    }
+  });
+  state.ssids = Object.entries(wifi)
+    .filter(([, s]) => s['.type'] === 'wifi-iface' && s.ssid)
+    .map(([key, s]) => ({ id: s.ifname || key, section: key, label: s.ssid, network: s.network }));
+
+  // dhcp map: interface_name → { section, enabled }
+  const dhcpByIface = {};
+  Object.entries(dhcp).forEach(([key, sec]) => {
+    if (sec['.type'] === 'dhcp' && sec.interface)
+      dhcpByIface[sec.interface] = { section: key, enabled: sec.ignore !== '1' };
+  });
+
+  // firewall zone map: network_name → { section, name }
+  const fwZoneByNet = {};
+  Object.entries(fw).forEach(([key, sec]) => {
+    if (sec['.type'] === 'zone' && sec.network) {
+      uciList(sec.network).forEach(n => {
+        fwZoneByNet[n] = { section: key, name: sec.name || n };
+      });
+    }
+  });
+
+  // Convert UCI port string "1 5t" → { lan1:'untagged', cpu0:'tagged' }
+  const uciPorts = (str) => {
+    const obj = {};
+    if (!str) return obj;
+    str.split(/\s+/).forEach(p => {
+      if (!p) return;
+      const tagged = p.endsWith('t');
+      const num = parseInt(tagged ? p.slice(0,-1) : p);
+      const port = state.ports.find(pt => pt.swPort === num);
+      if (port) obj[port.id] = tagged ? 'tagged' : 'untagged';
+    });
+    return obj;
+  };
+
+  // System / built-in interfaces to ignore
+  const systemIfaces = new Set([
+    'loopback','lan','wan','wan6','guest','wwan','wwan6',
+    'tethering','tethering6','lan_dev','wan_dev','globals',
+    'vlan_lan','vlan_wan',
+  ]);
+
+  state.vlans = [];
+  const seenVlanIds = new Set();
+  Object.entries(net).forEach(([name, sec]) => {
+    if (sec['.type'] !== 'interface') return;
+    if (systemIfaces.has(name)) return;
+    const ifname = sec.ifname || sec.device || '';
+    const swMatch = ifname.match(/(?:^|\s)eth0\.(\d+)(?:\s|$)/);
+    const dsaMatch = ifname.match(/(?:^|\s)br-vlan(\d+)(?:\s|$)/);
+    if (!swMatch && !dsaMatch) return;
+    const vlanId = parseInt(swMatch ? swMatch[1] : dsaMatch[1]);
+    seenVlanIds.add(String(vlanId));
+    const sw = swVlanByVid[String(vlanId)];
+    const dhcpInfo = dhcpByIface[name];
+    const fwZone = fwZoneByNet[name];
+    const wifiList = wifiByNet[name] || [];
+    const isBridge = sec.type === 'bridge';
+    state.vlans.push({
+      id: vlanId, name, ip: sec.ipaddr || '', mask: sec.netmask || '255.255.255.0',
+      ports: sw ? uciPorts(sw.ports) : {},
+      ssid: wifiList.length > 0 ? wifiList[0].id : '',
+      dhcp: dhcpInfo ? dhcpInfo.enabled : false,
+      _netSection: name,
+      _swVlanSection: sw ? sw.section : null,
+      _dhcpSection: dhcpInfo ? dhcpInfo.section : null,
+      _fwZone: fwZone ? fwZone.section : null,
+      _fwZoneName: fwZone ? fwZone.name : name,
+      _wifiSection: wifiList.length > 0 ? wifiList[0].section : null,
+      _isBridge: isBridge,
+      _bridgeName: isBridge ? `br-${name}` : ifname,
+      _isNew: false,
+    });
+  });
+  if (state.switchType === 'swconfig') {
+    Object.entries(swVlanByVid).forEach(([vid, sw]) => {
+      if (seenVlanIds.has(vid) || vid === '1' || vid === '2') return;
+      const vlanId = parseInt(vid, 10);
+      if (!Number.isFinite(vlanId)) return;
+      state.vlans.push({
+        id: vlanId,
+        name: `vlan${vlanId}`,
+        ip: '',
+        mask: '255.255.255.0',
+        ports: uciPorts(sw.ports),
+        ssid: '',
+        dhcp: false,
+        _netSection: null,
+        _swVlanSection: sw.section,
+        _dhcpSection: null,
+        _fwZone: null,
+        _fwZoneName: `vlan${vlanId}`,
+        _wifiSection: null,
+        _isBridge: false,
+        _bridgeName: `eth0.${vlanId}`,
+        _isNew: false,
+        _orphanSwitch: true,
+      });
+    });
+  }
+  state.vlans.sort((a, b) => a.id - b.id);
+	  state._deletedVlans = [];
+  state._deletedPfRules = [];
+
+  // AP isolation: check wireless isolate flag per network
+  state.apIsolation = {};
+  state.vlans.forEach(v => {
+    const wList = wifiByNet[v.name] || [];
+    const isolated = wList.some(wi => {
+      const s = Object.entries(wifi).find(([key, x]) => (x.ifname || key) === wi.id)?.[1];
+      return s && s.isolate === '1';
+    });
+    state.apIsolation[`vlan${v.id}`] = isolated;
+  });
+
+  // Inter-VLAN firewall rules: check forwarding sections
+  const forwardings = Object.values(fw).filter(s => s['.type'] === 'forwarding');
+  state.fwRules = [];
+  const managedVlans = state.vlans.filter(v => !v._orphanSwitch && v.ip);
+  for (const sv of managedVlans) {
+    for (const dv of managedVlans) {
+      if (sv.id === dv.id) continue;
+      const srcZone = fwZoneByNet[sv.name]?.name || sv.name;
+      const dstZone = fwZoneByNet[dv.name]?.name || dv.name;
+      const hasF = forwardings.some(f => f.src === srcZone && f.dest === dstZone);
+      state.fwRules.push({ src: sv.name, dst: dv.name, action: hasF ? 'allow' : 'deny' });
+    }
+	  }
+
+  state.pfRules = Object.entries(fw)
+    .filter(([, s]) => s['.type'] === 'redirect' && s.src_dport && s.dest_ip)
+    .map(([key, s]) => ({
+      name: s.name || key,
+      proto: s.proto || 'tcp',
+      srcZone: s.src || 'wan',
+      srcPort: parseInt(s.src_dport, 10),
+      destIp: s.dest_ip || '',
+      destPort: parseInt(s.dest_port || s.src_dport, 10),
+      _fwSection: key,
+      _isNew: false,
+    }));
+
+  // Avahi: read allow-interfaces from daemon config
+  state.avahiBridges = [];
+  try {
+    const avahi = rpcVal(await rpcCall(state.sid, 'file', 'read',
+      { path: '/etc/avahi/avahi-daemon.conf' }));
+    if (avahi?.data) {
+      const conf = atob(avahi.data);
+      const m = conf.match(/allow-interfaces=([^\n]+)/);
+      if (m) {
+        const ifaces = m[1].trim().split(',');
+        const bridgeToVlan = {};
+        state.vlans.forEach(v => {
+          bridgeToVlan[v._bridgeName] = `vlan${v.id}`;
+          bridgeToVlan[`eth0.${v.id}`] = `vlan${v.id}`;
+        });
+        for (let i = 0; i < ifaces.length - 1; i++) {
+          const if1 = bridgeToVlan[ifaces[i].trim()] || ifaces[i].trim();
+          const if2 = bridgeToVlan[ifaces[i+1].trim()] || ifaces[i+1].trim();
+          state.avahiBridges.push({ if1, if2, dir: 'both', desc: `${ifaces[i].trim()} ↔ ${ifaces[i+1].trim()}` });
+        }
+      }
+    }
+  } catch(e) { /* avahi not configured or file read not allowed */ }
+}
+
+// ═══════════════════════════════════════════════════
+//  TAB ROUTING
+// ═══════════════════════════════════════════════════
+function showTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+tab)?.classList.add('active');
+  const content = document.getElementById('tab-content');
+
+  if (tab === 'overview')  content.innerHTML = renderOverview();
+  if (tab === 'vlans')     content.innerHTML = renderVlans();
+  if (tab === 'firewall')  content.innerHTML = renderFirewall();
+  if (tab === 'avahi')     content.innerHTML = renderAvahi();
+}
+
+// ═══════════════════════════════════════════════════
+//  OVERVIEW TAB
+// ═══════════════════════════════════════════════════
+function renderOverview() {
+  const swLabel = state.switchType === 'swconfig' ? 'swconfig (legacy)' : 'DSA (kernel)';
+  return `
+  <div class="grid-3" style="margin-bottom:16px">
+    <div class="stat-card">
+      <div class="stat-label">VLAN attive</div>
+      <div class="stat-value">${state.vlans.length}</div>
+      <div class="stat-sub">su questo router</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Switch type</div>
+      <div class="stat-value" style="font-size:14px;margin-top:4px">${swLabel}</div>
+      <div class="stat-sub">${state.deviceModel}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Regole firewall</div>
+      <div class="stat-value">${state.fwRules.length}</div>
+      <div class="stat-sub">${state.pfRules.length} port forwarding</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">◈ VLAN configurate</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>ID</th><th>Nome</th><th>Gateway</th><th>Porte</th><th>SSID</th><th>DHCP</th><th>AP Isolation</th>
+        </tr></thead>
+        <tbody>
+          ${state.vlans.map(v => `
+          <tr>
+            <td><span class="badge badge-blue mono">${v.id}</span></td>
+            <td><strong>${v.name}</strong></td>
+            <td class="mono" style="font-size:12px">${v.ip}</td>
+            <td>${renderPortTags(v.ports)}</td>
+            <td class="mono" style="font-size:11.5px">${v.ssid || '<span class="text-muted">—</span>'}</td>
+            <td>${v.dhcp ? '<span class="badge badge-green">on</span>' : '<span class="badge badge-gray">off</span>'}</td>
+            <td>${state.apIsolation['vlan'+v.id] ? '<span class="badge badge-warning">isolato</span>' : '<span class="badge badge-gray">off</span>'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">⊹ Avahi bridges attivi</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>IF1</th><th>IF2</th><th>Direzione</th><th>Note</th></tr></thead>
+        <tbody>
+          ${state.avahiBridges.length ? state.avahiBridges.map(b => `
+          <tr>
+            <td class="mono">${b.if1}</td>
+            <td class="mono">${b.if2}</td>
+            <td><span class="badge badge-gray">${b.dir === 'both' ? '↔' : b.dir === 'a2b' ? '→' : '←'}</span></td>
+            <td class="text-muted text-sm">${b.desc}</td>
+          </tr>`).join('') : '<tr><td colspan="4" class="text-muted" style="text-align:center;padding:20px">Nessun bridge configurato</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function renderPortTags(ports) {
+  return Object.entries(ports||{}).map(([p,m]) =>
+    `<span class="port-tag ${m}">${p}${m==='tagged'?' (T)':m==='untagged'?' (U)':''}</span>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════════
+//  VLANS TAB
+// ═══════════════════════════════════════════════════
+function renderVlans() {
+  return `
+  <div class="section-header">
+    <div>
+      <div class="section-title">Gestione VLAN</div>
+      <div class="section-sub">Crea, modifica e rimuovi VLAN — tipo switch: <span class="font-mono">${state.switchType}</span></div>
+    </div>
+    <button class="btn btn-primary" style="width:auto" onclick="openNewVlan()">+ Nuova VLAN</button>
+  </div>
+
+  ${state.vlans.length === 0 ? `<div class="empty-state"><div class="empty-icon">⊞</div><p>Nessuna VLAN configurata.<br>Crea la prima VLAN con il pulsante in alto.</p></div>` : ''}
+
+  ${state.vlans.map((v, idx) => `
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">
+        <span class="badge badge-blue">VLAN ${v.id}</span>
+        ${v.name}
+      </span>
+      <div class="row gap-4">
+        <button class="btn btn-secondary btn-sm" onclick="editVlan(${idx})">✎ Modifica</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteVlan(${idx})">✕ Elimina</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="grid-3">
+        <div>
+          <div class="text-sm text-muted font-mono" style="margin-bottom:4px">GATEWAY / SUBNET</div>
+          <div class="mono" style="font-size:13px">${v.ip} / ${v.mask}</div>
+        </div>
+        <div>
+          <div class="text-sm text-muted font-mono" style="margin-bottom:4px">INTERFACCIA</div>
+          <div class="mono" style="font-size:13px">${state.switchType === 'swconfig' ? `eth0.${v.id}` : `br-vlan${v.id}`}</div>
+        </div>
+        <div>
+          <div class="text-sm text-muted font-mono" style="margin-bottom:4px">SSID WIFI</div>
+          <div class="mono" style="font-size:13px">${v.ssid || '—'}</div>
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <div class="text-sm text-muted font-mono" style="margin-bottom:6px">PORTE</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${state.ports.map(p => {
+            const mode = v.ports?.[p.id];
+            if (!mode) return `<span class="port-tag" style="opacity:0.35">${p.label}</span>`;
+            return `<span class="port-tag ${mode}">${p.label} <span style="font-size:10px;opacity:0.7">${mode==='tagged'?'T':'U'}</span></span>`;
+          }).join('')}
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:16px;align-items:center">
+        <label class="toggle-wrap" onclick="toggleDhcp(${idx})">
+          <div class="toggle ${v.dhcp?'on':''}" id="dhcp-toggle-${idx}"></div>
+          <span class="text-sm">DHCP server</span>
+        </label>
+        <label class="toggle-wrap" onclick="toggleAP(${idx})">
+          <div class="toggle ${state.apIsolation['vlan'+v.id]?'on':''}" id="ap-toggle-${idx}"></div>
+          <span class="text-sm">AP Isolation</span>
+        </label>
+      </div>
+    </div>
+  </div>`).join('')}`;
+}
+
+// ═══════════════════════════════════════════════════
+//  FIREWALL TAB
+// ═══════════════════════════════════════════════════
+function renderFirewall() {
+  const vlans = state.vlans.filter(v => !v._orphanSwitch && v.ip);
+  if (!vlans.length) return `<div class="empty-state"><div class="empty-icon">⛨</div><p>Crea prima almeno due VLAN per configurare il firewall.</p></div>`;
+
+  // Build matrix
+  let matrixCells = `<div class="fw-matrix" style="grid-template-columns: auto ${vlans.map(()=>'1fr').join(' ')}">`;
+
+  // Header row
+  matrixCells += `<div class="fw-cell header" style="font-size:10px;color:var(--text-dim)">SRC \\ DST</div>`;
+  vlans.forEach(v => matrixCells += `<div class="fw-cell header" style="justify-content:center">${v.name}<br><span style="font-size:10px;opacity:0.6">VLAN${v.id}</span></div>`);
+
+  // Data rows
+  vlans.forEach(srcV => {
+    matrixCells += `<div class="fw-cell header">${srcV.name}<br><span style="font-size:10px;opacity:0.6">VLAN${srcV.id}</span></div>`;
+    vlans.forEach(dstV => {
+      if (srcV.id === dstV.id) {
+        matrixCells += `<div class="fw-cell self">—</div>`;
+      } else {
+        const rule = state.fwRules.find(r => r.src === srcV.name && r.dst === dstV.name);
+        const action = rule ? rule.action : 'allow';
+        matrixCells += `<div class="fw-cell ${action}" onclick="toggleFwRule('${srcV.name}','${dstV.name}')" title="Clicca per cambiare">
+          ${action === 'allow' ? '✓ allow' : '✗ deny'}
+        </div>`;
+      }
+    });
+  });
+  matrixCells += '</div>';
+
+  return `
+  <div class="section-header">
+    <div>
+      <div class="section-title">Firewall inter-VLAN</div>
+      <div class="section-sub">Clicca su una cella per alternare allow/deny tra zone. Le regole WAN→Internet sono sempre permesse.</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><span class="card-title">⛨ Matrice accessi inter-VLAN</span></div>
+    <div class="card-body">
+      <div class="alert alert-info" style="margin-bottom:12px">
+        ℹ Righe = sorgente, Colonne = destinazione. <span style="background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:3px;font-family:var(--mono);font-size:11px">allow</span> = traffico permesso, <span style="background:#fee2e2;color:#b91c1c;padding:1px 6px;border-radius:3px;font-family:var(--mono);font-size:11px">deny</span> = bloccato.
+      </div>
+      ${matrixCells}
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <span class="card-title">AP Isolation per VLAN</span>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-info">ℹ L'AP isolation impedisce ai client wireless della stessa VLAN di comunicare tra loro.</div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
+        ${vlans.map(v => `
+        <label class="toggle-wrap" onclick="toggleAP(${state.vlans.indexOf(v)})">
+          <div class="toggle ${state.apIsolation['vlan'+v.id]?'on':''}" id="fw-ap-toggle-${v.id}"></div>
+          <span><strong>${v.name}</strong> <span class="mono text-muted" style="font-size:12px">VLAN ${v.id} — ${v.ip}</span></span>
+        </label>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Port Forwarding</span>
+      <button class="btn btn-secondary btn-sm" onclick="openPF()">+ Aggiungi</button>
+    </div>
+    ${state.pfRules.length === 0 ? '<div class="empty-state" style="padding:20px"><p>Nessuna regola di port forwarding</p></div>' : `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Nome</th><th>Proto</th><th>Zona src</th><th>Porta ext</th><th>IP dst</th><th>Porta int</th><th></th></tr></thead>
+        <tbody>
+          ${state.pfRules.map((r,i) => `
+          <tr>
+            <td><strong>${r.name}</strong></td>
+            <td class="mono">${r.proto}</td>
+            <td>${r.srcZone}</td>
+            <td class="mono">${r.srcPort}</td>
+            <td class="mono">${r.destIp}</td>
+            <td class="mono">${r.destPort}</td>
+            <td><button class="btn btn-danger btn-sm btn-icon" onclick="deletePF(${i})">✕</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════
+//  AVAHI TAB
+// ═══════════════════════════════════════════════════
+function renderAvahi() {
+  return `
+  <div class="section-header">
+    <div>
+      <div class="section-title">Avahi / mDNS bridge</div>
+      <div class="section-sub">Permetti la scoperta di servizi mDNS (AirPlay, Chromecast, stampanti) tra VLAN diverse</div>
+    </div>
+    <button class="btn btn-primary" style="width:auto" onclick="openAvahiModal()">+ Nuovo bridge</button>
+  </div>
+
+  <div class="alert alert-warn" style="margin-bottom:16px">
+    ⚠ Avahi rilancia solo i pacchetti mDNS (porta 5353/UDP). Per far funzionare i servizi devi anche aprire le porte specifiche nel firewall inter-VLAN (es. 7000/TCP per AirPlay, 8080 per Chromecast).
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">⊹ Bridge mDNS configurati</span></div>
+    ${state.avahiBridges.length === 0 ? '<div class="empty-state" style="padding:24px"><div class="empty-icon">⊹</div><p>Nessun bridge configurato</p></div>' : `
+    <div>
+      ${state.avahiBridges.map((b,i) => `
+      <div class="avahi-row">
+        <div>
+          <div class="row" style="gap:8px">
+            <span class="mono badge badge-gray">${b.if1}</span>
+            <span style="color:var(--text-dim)">${b.dir==='both'?'↔':b.dir==='a2b'?'→':'←'}</span>
+            <span class="mono badge badge-gray">${b.if2}</span>
+          </div>
+          <div class="text-sm text-muted mt-2">${b.desc}</div>
+        </div>
+        <div>
+          <span class="badge ${b.dir==='both'?'badge-blue':'badge-gray'}">${b.dir==='both'?'bidirezionale':b.dir==='a2b'?'→ solo A→B':'← solo B→A'}</span>
+        </div>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteAvahi(${i})">✕</button>
+      </div>`).join('')}
+    </div>`}
+  </div>
+
+  <div class="card mt-4">
+    <div class="card-header"><span class="card-title">Anteprima /etc/avahi/avahi-daemon.conf</span></div>
+    <div class="card-body">
+      <div class="diff-block">${generateAvahiConf()}</div>
+    </div>
+  </div>`;
+}
+
+// Map "vlan10" → real bridge/iface name ("br-home", "eth0.10")
+function vlanRefToBridge(ref) {
+  const vlanId = parseInt(ref.replace('vlan', ''));
+  const v = state.vlans.find(vl => vl.id === vlanId);
+  return v ? (v._bridgeName || `eth0.${vlanId}`) : ref;
+}
+
+// HTML preview for the Avahi tab
+function generateAvahiConf() {
+  const vlanIds = [...new Set(state.avahiBridges.flatMap(b => [b.if1, b.if2]))];
+  if (!vlanIds.length) return '<span class="diff-comment"># Nessun bridge configurato</span>';
+  const ifaces = vlanIds.map(vlanRefToBridge).join(',');
+  return `<span class="diff-comment">[server]</span>
+<span class="diff-key">use-ipv4</span>=yes
+<span class="diff-key">use-ipv6</span>=no
+<span class="diff-key">allow-interfaces</span>=${ifaces}
+<span class="diff-key">enable-reflector</span>=yes
+<span class="diff-key">reflect-ipv</span>=no
+
+<span class="diff-comment">[wide-area]</span>
+<span class="diff-key">enable-wide-area</span>=no`;
+}
+
+// Actual text content to write to /etc/avahi/avahi-daemon.conf
+function generateAvahiConfText() {
+  const vlanIds = [...new Set(state.avahiBridges.flatMap(b => [b.if1, b.if2]))];
+  const ifaces = vlanIds.map(vlanRefToBridge).join(',');
+  return `[server]
+use-ipv4=yes
+use-ipv6=yes
+check-response-ttl=no
+use-iff-running=no
+allow-interfaces=${ifaces}
+
+[publish]
+publish-addresses=yes
+publish-hinfo=yes
+publish-workstation=no
+publish-domain=yes
+
+[reflector]
+enable-reflector=yes
+reflect-ipv=no
+
+[rlimits]
+rlimit-core=0
+rlimit-data=4194304
+rlimit-fsize=0
+rlimit-nofile=30
+rlimit-stack=4194304
+rlimit-nproc=3
+`;
+}
+
+async function writeAvahiConf() {
+  const content = generateAvahiConfText();
+  // file ubus service expects base64-encoded data
+  const encoded = btoa(unescape(encodeURIComponent(content)));
+  await rpcCall(state.sid, 'file', 'write', {
+    path: '/etc/avahi/avahi-daemon.conf',
+    data: encoded,
+  });
+  await rpcCall(state.sid, 'service', 'restart', { name: 'avahi-daemon' }).catch(() => {});
+}
+
+// ═══════════════════════════════════════════════════
+//  VLAN MODAL ACTIONS
+// ═══════════════════════════════════════════════════
+function openNewVlan() {
+  state.editingVlanIdx = null;
+  document.getElementById('modal-vlan-title').textContent = 'Nuova VLAN';
+  document.getElementById('vlan-id').value = '';
+  document.getElementById('vlan-name').value = '';
+  document.getElementById('vlan-ip').value = '';
+  document.getElementById('vlan-mask').value = '255.255.255.0';
+
+  buildPortSelector(state.switchType === 'swconfig' ? { cpu0: 'tagged' } : {});
+  buildSsidSelect('');
+  document.getElementById('vlan-dhcp-toggle').className = 'toggle on';
+  openModal('modal-vlan');
+}
+
+function editVlan(idx) {
+  const v = state.vlans[idx];
+  state.editingVlanIdx = idx;
+  document.getElementById('modal-vlan-title').textContent = `Modifica VLAN ${v.id}`;
+  document.getElementById('vlan-id').value = v.id;
+  document.getElementById('vlan-name').value = v.name;
+  document.getElementById('vlan-ip').value = v.ip;
+  document.getElementById('vlan-mask').value = v.mask;
+  buildPortSelector(v.ports || {});
+  buildSsidSelect(v.ssid || '');
+  document.getElementById('vlan-dhcp-toggle').className = 'toggle ' + (v.dhcp ? 'on' : '');
+  openModal('modal-vlan');
+}
+
+function buildPortSelector(currentPorts) {
+  const el = document.getElementById('port-selector');
+  el.innerHTML = state.ports.map(p => {
+    const mode = currentPorts[p.id] || 'off';
+    return `<div class="port-btn ${mode === 'untagged' ? 'untagged' : mode === 'tagged' ? 'tagged' : p.type === 'cpu' ? '' : ''}"
+      data-port="${p.id}" data-mode="${mode}"
+      onclick="cyclePort(this,'${p.type}')">${p.label}<br><span style="font-size:9px;opacity:0.7">${mode === 'off' ? '—' : mode}</span></div>`;
+  }).join('');
+}
+
+function cyclePort(el, type) {
+  const modes = type === 'cpu' ? ['off','tagged'] : ['off','untagged','tagged'];
+  const cur = el.dataset.mode;
+  const next = modes[(modes.indexOf(cur)+1) % modes.length];
+  el.dataset.mode = next;
+  el.className = 'port-btn ' + (next === 'tagged' ? 'tagged' : next === 'untagged' ? 'untagged' : type === 'cpu' ? '' : '');
+  el.innerHTML = el.innerHTML.replace(/<span.*<\/span>/, `<span style="font-size:9px;opacity:0.7">${next === 'off' ? '—' : next}</span>`);
+}
+
+function buildSsidSelect(current) {
+  const el = document.getElementById('vlan-ssid');
+  el.innerHTML = '<option value="">Nessuno</option>' + state.ssids.map(s =>
+    `<option value="${s.id}" ${s.id === current ? 'selected' : ''}>${s.label}</option>`
+  ).join('');
+}
+
+function saveVlan() {
+  const id = parseInt(document.getElementById('vlan-id').value);
+  const name = document.getElementById('vlan-name').value.trim();
+  const ip = document.getElementById('vlan-ip').value.trim();
+  const mask = document.getElementById('vlan-mask').value.trim();
+  const ssid = document.getElementById('vlan-ssid').value;
+  const dhcp = document.getElementById('vlan-dhcp-toggle').classList.contains('on');
+
+  if (!id || !name || !ip) { showToast('Compila ID, Nome e IP gateway', 'error'); return; }
+  if (id < 3 || id > 4094) { showToast('Usa un VLAN ID tra 3 e 4094', 'error'); return; }
+  const duplicate = state.vlans.find((v, idx) =>
+    idx !== state.editingVlanIdx && (v.id === id || v.name.toLowerCase() === name.toLowerCase()));
+  if (duplicate) { showToast('Esiste già una VLAN con lo stesso ID o nome', 'error'); return; }
+
+  const ports = {};
+  document.querySelectorAll('#port-selector .port-btn').forEach(btn => {
+    if (btn.dataset.mode !== 'off') ports[btn.dataset.port] = btn.dataset.mode;
+  });
+  if (state.switchType === 'swconfig' && ports.cpu0 !== 'tagged') {
+    showToast('Su Opal/swconfig la porta CPU deve essere tagged', 'error');
+    return;
+  }
+
+  if (state.editingVlanIdx !== null) {
+    const old = state.vlans[state.editingVlanIdx];
+    // Preserve UCI metadata from the existing VLAN
+    const vlan = { id, name, ip, mask, ports, ssid, dhcp,
+      _netSection: old._netSection, _swVlanSection: old._swVlanSection,
+      _dhcpSection: old._dhcpSection, _fwZone: old._fwZone,
+      _fwZoneName: old._fwZoneName, _wifiSection: old._wifiSection,
+      _isBridge: old._isBridge, _bridgeName: old._bridgeName,
+      _isNew: old._orphanSwitch ? true : (old._isNew || false),
+      _orphanSwitch: false,
+    };
+    addChange({ op: 'mod', label: `Modifica VLAN ${id} (${name})`, desc: `Aggiorna configurazione VLAN ${old.id} → ${id}` });
+    state.vlans[state.editingVlanIdx] = vlan;
+  } else {
+    const vlan = { id, name, ip, mask, ports, ssid, dhcp, _isNew: true };
+    addChange({ op: 'add', label: `Nuova VLAN ${id} (${name})`, desc: `Crea interfaccia ${state.switchType === 'swconfig' ? 'eth0.'+id : 'br-vlan'+id}, subnet ${ip}` });
+    state.vlans.push(vlan);
+  }
+
+  closeModal('modal-vlan');
+  showTab('vlans');
+  showToast(`VLAN ${id} salvata nelle modifiche pendenti`, 'info');
+}
+
+function deleteVlan(idx) {
+  const v = state.vlans[idx];
+  if (!confirm(`Eliminare VLAN ${v.id} (${v.name})?`)) return;
+  addChange({ op: 'del', label: `Elimina VLAN ${v.id} (${v.name})`, desc: `Rimuove interfaccia e regole associate` });
+  if (!v._isNew) state._deletedVlans.push(v);
+  state.vlans.splice(idx, 1);
+  state.fwRules = state.fwRules.filter(r => r.src !== v.name && r.dst !== v.name);
+  showTab('vlans');
+  showToast(`VLAN ${v.id} rimossa (pendente)`, 'info');
+}
+
+// ═══════════════════════════════════════════════════
+//  TOGGLE HELPERS
+// ═══════════════════════════════════════════════════
+function toggleEl(el) { el.classList.toggle('on'); }
+
+function toggleDhcp(idx) {
+  state.vlans[idx].dhcp = !state.vlans[idx].dhcp;
+  const tog = document.getElementById('dhcp-toggle-' + idx);
+  if (tog) tog.classList.toggle('on', state.vlans[idx].dhcp);
+  addChange({ op: 'mod', label: `DHCP VLAN ${state.vlans[idx].id}`, desc: `${state.vlans[idx].dhcp ? 'Abilitato' : 'Disabilitato'} DHCP su VLAN ${state.vlans[idx].id}` });
+}
+
+function toggleAP(idx) {
+  const v = state.vlans[idx];
+  const key = 'vlan' + v.id;
+  state.apIsolation[key] = !state.apIsolation[key];
+  ['ap-toggle-'+idx, 'fw-ap-toggle-'+v.id].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('on', state.apIsolation[key]);
+  });
+  addChange({ op: 'mod', label: `AP Isolation VLAN ${v.id}`, desc: `${state.apIsolation[key] ? 'Abilitata' : 'Disabilitata'} AP isolation su ${v.name}` });
+}
+
+// ═══════════════════════════════════════════════════
+//  FIREWALL ACTIONS
+// ═══════════════════════════════════════════════════
+function toggleFwRule(src, dst) {
+  const idx = state.fwRules.findIndex(r => r.src === src && r.dst === dst);
+  if (idx === -1) {
+    state.fwRules.push({ src, dst, action: 'deny' });
+    addChange({ op: 'add', label: `Regola ${src} → ${dst}: deny`, desc: `Blocca traffico da zona ${src} verso ${dst}` });
+  } else {
+    const r = state.fwRules[idx];
+    r.action = r.action === 'deny' ? 'allow' : 'deny';
+    addChange({ op: 'mod', label: `Regola ${src} → ${dst}: ${r.action}`, desc: `Cambia regola firewall` });
+  }
+  showTab('firewall');
+}
+
+function openPF() {
+  const pfSrc = document.getElementById('pf-src');
+  if (pfSrc) pfSrc.innerHTML = '<option value="wan">wan</option>' +
+    state.vlans.map(v => `<option value="${v._fwZoneName || v._netSection || v.name}">${v.name}</option>`).join('');
+  openModal('modal-pf');
+}
+
+function savePF() {
+  const name = document.getElementById('pf-name').value.trim();
+  const proto = document.getElementById('pf-proto').value;
+  const srcZone = document.getElementById('pf-src').value;
+  const srcPort = parseInt(document.getElementById('pf-src-port').value);
+  const destIp = document.getElementById('pf-dest-ip').value.trim();
+  const destPort = parseInt(document.getElementById('pf-dest-port').value);
+  if (!name || !srcPort || !destIp || !destPort) { showToast('Compila tutti i campi', 'error'); return; }
+  state.pfRules.push({ name, proto, srcZone, srcPort, destIp, destPort, _isNew: true });
+  addChange({ op: 'add', label: `Port Forward: ${name}`, desc: `${proto}:${srcPort} → ${destIp}:${destPort}` });
+  closeModal('modal-pf');
+  showTab('firewall');
+  showToast('Regola aggiunta (pendente)', 'info');
+}
+
+function deletePF(idx) {
+  const r = state.pfRules[idx];
+  addChange({ op: 'del', label: `Elimina Port Forward: ${r.name}`, desc: '' });
+  if (!r._isNew && r._fwSection) state._deletedPfRules.push(r);
+  state.pfRules.splice(idx, 1);
+  showTab('firewall');
+}
+
+// ═══════════════════════════════════════════════════
+//  AVAHI ACTIONS
+// ═══════════════════════════════════════════════════
+function openAvahiModal() {
+  ['avahi-if1','avahi-if2'].forEach(id => {
+    const el = document.getElementById(id);
+    el.innerHTML = state.vlans.map(v => `<option value="vlan${v.id}">${v.name} (vlan${v.id})</option>`).join('');
+  });
+  openModal('modal-avahi');
+}
+
+function saveAvahiBridge() {
+  const if1 = document.getElementById('avahi-if1').value;
+  const if2 = document.getElementById('avahi-if2').value;
+  const dir = document.getElementById('avahi-dir').value;
+  if (if1 === if2) { showToast('Seleziona due interfacce diverse', 'error'); return; }
+  const dirLabel = dir === 'both' ? '↔' : dir === 'a2b' ? '→' : '←';
+  state.avahiBridges.push({ if1, if2, dir, desc: `${if1} ${dirLabel} ${if2}` });
+  addChange({ op: 'add', label: `Avahi bridge ${if1} ${dirLabel} ${if2}`, desc: 'Aggiorna /etc/avahi/avahi-daemon.conf' });
+  closeModal('modal-avahi');
+  showTab('avahi');
+  showToast('Bridge mDNS aggiunto (pendente)', 'info');
+}
+
+function deleteAvahi(idx) {
+  const b = state.avahiBridges[idx];
+  addChange({ op: 'del', label: `Rimuovi Avahi bridge ${b.if1} ↔ ${b.if2}`, desc: '' });
+  state.avahiBridges.splice(idx, 1);
+  showTab('avahi');
+}
+
+// ═══════════════════════════════════════════════════
+//  PENDING CHANGES
+// ═══════════════════════════════════════════════════
+function addChange(change) {
+  state.pendingChanges.push({ ...change, ts: Date.now() });
+  updatePendingBar();
+}
+
+function updatePendingBar() {
+  const bar = document.getElementById('pending-bar');
+  const n = state.pendingChanges.length;
+  bar.classList.toggle('visible', n > 0);
+  document.getElementById('pending-count-label').textContent = `${n} modifica${n !== 1 ? 'he' : ''}`;
+}
+
+function discardChanges() {
+  if (!confirm('Scartare tutte le modifiche pendenti?')) return;
+  state.pendingChanges = [];
+  state._deletedVlans = [];
+  state._deletedPfRules = [];
+  updatePendingBar();
+  loadRealData().then(() => {
+    showTab('overview');
+    showToast('Modifiche scartate', 'info');
+  }).catch(() => {
+    loadDemoData();
+    showTab('overview');
+    showToast('Modifiche scartate', 'info');
+  });
+}
+
+function showPreview() {
+  const list = document.getElementById('change-list');
+  list.innerHTML = state.pendingChanges.map(c => `
+    <div class="change-item">
+      <span class="change-op op-${c.op}">${c.op.toUpperCase()}</span>
+      <div>
+        <div style="font-weight:500">${c.label}</div>
+        ${c.desc ? `<div class="text-sm text-muted">${c.desc}</div>` : ''}
+      </div>
+    </div>`).join('');
+
+  const diff = document.getElementById('diff-preview');
+  diff.innerHTML = generateDiffPreview();
+  openModal('modal-preview');
+}
+
+function generateDiffPreview() {
+  let out = `<span class="diff-comment"># /etc/config/network — modifiche pendenti</span>\n\n`;
+  state.vlans.forEach(v => {
+    const iface = state.switchType === 'swconfig' ? `eth0.${v.id}` : `br-vlan${v.id}`;
+    const secName = v._netSection || sanitizeUciName(v.name);
+    out += `<span class="diff-add">+ config interface '${secName}'</span>\n`;
+    out += `<span class="diff-add">+   option ifname '${iface}'</span>\n`;
+    out += `<span class="diff-add">+   option proto 'static'</span>\n`;
+    out += `<span class="diff-add">+   option ipaddr '${v.ip}'</span>\n`;
+    out += `<span class="diff-add">+   option netmask '${v.mask}'</span>\n\n`;
+  });
+  if (state.switchType === 'swconfig') {
+    out += `<span class="diff-comment"># /etc/config/network — switch config</span>\n`;
+    out += `<span class="diff-add">+ config switch_vlan</span>\n`;
+    state.vlans.forEach(v => {
+      out += `<span class="diff-add">+   option vlan '${v.id}'</span>\n`;
+      out += `<span class="diff-add">+   option ports '${portsToUciString(v.ports)}'</span>\n`;
+    });
+  }
+  return out;
+}
+
+function sanitizeUciName(name) {
+  return String(name || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^_+|_+$/g, '') || 'vlan';
+}
+
+function portsToUciString(ports) {
+  return state.ports
+    .filter(p => ports?.[p.id] && ports[p.id] !== 'off' && p.swPort !== undefined)
+    .map(p => ports[p.id] === 'tagged' ? `${p.swPort}t` : `${p.swPort}`)
+    .join(' ');
+}
+
+async function applyChanges() {
+  if (state.pendingChanges.length === 0) { showToast('Nessuna modifica pendente', 'info'); return; }
+  showToast('Applicazione in corso…', 'info');
+  try {
+    // ── STEP 1: delete removed VLANs ──────────────────────────────────
+    for (const v of state._deletedVlans) {
+      if (v._netSection)    await uciDelete('network',  v._netSection).catch(() => {});
+      if (v._swVlanSection) await uciDelete('network',  v._swVlanSection).catch(() => {});
+      if (v._dhcpSection)   await uciDelete('dhcp',     v._dhcpSection).catch(() => {});
+      if (v._fwZone)        await uciDelete('firewall', v._fwZone).catch(() => {});
+    }
+
+    // ── STEP 2: create / update VLANs ─────────────────────────────────
+    for (const v of state.vlans) {
+      if (v._orphanSwitch) continue;
+      const secName = v._netSection || sanitizeUciName(v.name);
+      const ifname  = state.switchType === 'swconfig' ? `eth0.${v.id}` : `br-vlan${v.id}`;
+      const portString = portsToUciString(v.ports);
+
+      if (v._isNew) {
+        // --- Create network interface ---
+        await uciAdd('network', 'interface', secName);
+        await uciSetValues('network', secName, {
+          proto: 'static', ifname, ipaddr: v.ip, netmask: v.mask, type: 'bridge',
+        });
+
+        // --- Create switch_vlan (swconfig only) ---
+        if (state.switchType === 'swconfig') {
+          const swSec = v._swVlanSection || rpcVal(await uciAdd('network', 'switch_vlan'))?.section;
+          if (swSec) {
+            await uciSetValues('network', swSec, {
+              device: 'switch0', vlan: String(v.id), ports: portString,
+            });
+            v._swVlanSection = swSec;
+          }
+        }
+
+        // --- Create DHCP if enabled ---
+        if (v.dhcp) {
+          await uciAdd('dhcp', 'dhcp', secName);
+          await uciSetValues('dhcp', secName, {
+            interface: secName, start: '100', limit: '150', leasetime: '12h',
+          });
+          v._dhcpSection = secName;
+        }
+
+        // --- Create firewall zone ---
+        const zRes = rpcVal(await uciAdd('firewall', 'zone'));
+        const zSec = zRes?.section;
+        if (zSec) {
+          await uciSetValues('firewall', zSec, {
+            name: secName, network: secName,
+            input: 'ACCEPT', output: 'ACCEPT', forward: 'REJECT',
+          });
+          v._fwZone = zSec;
+          v._fwZoneName = secName;
+
+          // Forwarding to WAN
+          const fwdRes = rpcVal(await uciAdd('firewall', 'forwarding'));
+          if (fwdRes?.section)
+            await uciSetValues('firewall', fwdRes.section, { src: secName, dest: 'wan' });
+
+          // DHCP + DNS rules for this zone
+          for (const [rname, port, proto] of [
+            [`${secName}-dhcp`, '67-68', 'udp'],
+            [`${secName}-dns`,  '53',    'tcp udp'],
+          ]) {
+            const rRes = rpcVal(await uciAdd('firewall', 'rule'));
+            if (rRes?.section)
+              await uciSetValues('firewall', rRes.section, {
+                name: rname, src: secName, target: 'ACCEPT', proto, dest_port: port,
+              });
+          }
+        }
+
+        v._isNew = false;
+        v._netSection = secName;
+        v._isBridge   = true;
+        v._bridgeName = `br-${secName}`;
+
+      } else {
+        // --- Update existing interface ---
+        await uciSetValues('network', secName, { ifname, proto: 'static', ipaddr: v.ip, netmask: v.mask });
+
+        // Update or create switch_vlan section
+        if (state.switchType === 'swconfig') {
+          if (v._swVlanSection) {
+            await uciSetValues('network', v._swVlanSection, {
+              device: 'switch0', vlan: String(v.id), ports: portString,
+            });
+          } else {
+            const swRes = rpcVal(await uciAdd('network', 'switch_vlan'));
+            if (swRes?.section) {
+              await uciSetValues('network', swRes.section, {
+                device: 'switch0', vlan: String(v.id), ports: portString,
+              });
+              v._swVlanSection = swRes.section;
+            }
+          }
+        }
+
+        // Handle DHCP toggle
+        if (v.dhcp && !v._dhcpSection) {
+          await uciAdd('dhcp', 'dhcp', secName);
+          await uciSetValues('dhcp', secName, {
+            interface: secName, start: '100', limit: '150', leasetime: '12h',
+          });
+          v._dhcpSection = secName;
+        } else if (!v.dhcp && v._dhcpSection) {
+          await uciDelete('dhcp', v._dhcpSection).catch(() => {});
+          v._dhcpSection = null;
+        }
+      }
+
+      if (v.ssid) {
+        const ssid = state.ssids.find(s => s.id === v.ssid);
+        if (ssid?.section) {
+          await uciSetValues('wireless', ssid.section, { network: secName });
+          v._wifiSection = ssid.section;
+        }
+      }
+    }
+
+    // ── STEP 3: inter-VLAN forwarding rules ───────────────────────────
+    const fwNow = uciValues(await rpcCall(state.sid, 'uci', 'get', { config: 'firewall' }).catch(() => ({})));
+    const fwdNow = Object.entries(fwNow).filter(([, s]) => s['.type'] === 'forwarding');
+
+    // Map zone name → vlan name for our custom VLANs
+    const zoneName = (v) => v._fwZoneName || v._netSection || v.name;
+    const ourZones = new Set(state.vlans.map(zoneName));
+
+    for (const rule of state.fwRules) {
+      const sv = state.vlans.find(v => v.name === rule.src);
+      const dv = state.vlans.find(v => v.name === rule.dst);
+      if (!sv || !dv) continue;
+      const srcZ = zoneName(sv);
+      const dstZ = zoneName(dv);
+      const existing = fwdNow.find(([, s]) => s.src === srcZ && s.dest === dstZ);
+
+      if (rule.action === 'allow' && !existing) {
+        const res = rpcVal(await uciAdd('firewall', 'forwarding'));
+        if (res?.section)
+          await uciSetValues('firewall', res.section, { src: srcZ, dest: dstZ });
+      } else if (rule.action === 'deny' && existing) {
+        const [key] = existing;
+        // Only delete forwardings between our managed VLAN zones
+        if (ourZones.has(srcZ) && ourZones.has(dstZ))
+          await uciDelete('firewall', key).catch(() => {});
+      }
+    }
+
+    for (const r of state._deletedPfRules) {
+      if (r._fwSection) await uciDelete('firewall', r._fwSection).catch(() => {});
+    }
+
+    for (const r of state.pfRules) {
+      const section = r._fwSection || rpcVal(await uciAdd('firewall', 'redirect'))?.section;
+      if (!section) continue;
+      await uciSetValues('firewall', section, {
+        name: r.name,
+        src: r.srcZone || 'wan',
+        proto: r.proto,
+        src_dport: String(r.srcPort),
+        dest_ip: r.destIp,
+        dest_port: String(r.destPort),
+        target: 'DNAT',
+      });
+      r._fwSection = section;
+      r._isNew = false;
+    }
+
+    // ── STEP 4: Avahi config (if any bridge changes) ──────────────────
+    const hasAvahiChange = state.pendingChanges.some(c => c.label?.toLowerCase().includes('avahi'));
+    if (hasAvahiChange) await writeAvahiConf();
+
+    // ── STEP 5: Commit & reload ───────────────────────────────────────
+    await uciCommit('network');
+    await uciCommit('dhcp');
+    await uciCommit('firewall');
+    await uciCommit('wireless').catch(() => {});
+    await rpcCall(state.sid, 'network', 'reload', {}).catch(() => {});
+    await rpcCall(state.sid, 'wifi', 'reload', {}).catch(() => {});
+    await rpcCall(state.sid, 'service', 'restart', { name: 'firewall' }).catch(() => {});
+
+    state.pendingChanges = [];
+    state._deletedVlans  = [];
+    state._deletedPfRules = [];
+    updatePendingBar();
+    showToast('Modifiche applicate con successo!', 'success');
+
+    // Reload state from router
+    await loadRealData().catch(() => {});
+    showTab('overview');
+
+  } catch(e) {
+    showToast('Errore: ' + e.message, 'error');
+    console.error('applyChanges error:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  MODAL HELPERS
+// ═══════════════════════════════════════════════════
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Close on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+});
+
+// ═══════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════
+function showToast(msg, type = 'info') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 3000);
+}
+</script>
+</body>
+</html>
